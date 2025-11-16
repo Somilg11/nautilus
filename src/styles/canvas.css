@@ -3,3 +3,19 @@
     background-size: 20px 20px;
     opacity: 0.4;
 } */
+
+/* GLOW ANIMATION */
+.node-glow {
+  animation: glowPulse 0.6s ease-in-out alternate infinite;
+  box-shadow: 0 0 12px rgba(0, 255, 153, 0.8) !important;
+  border-color: rgba(0, 255, 153, 0.8) !important;
+}
+
+@keyframes glowPulse {
+  0% {
+    box-shadow: 0 0 4px rgba(0, 255, 153, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 16px rgba(0, 255, 153, 1);
+  }
+}

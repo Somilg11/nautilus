@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { Github, ArrowRight } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 import Navbar from "@/components/navbar"
 
