@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -8,10 +9,15 @@ import { ModeToggle } from "./mode-toggle"
 import { GiNautilusShell } from "react-icons/gi"
 import Link from "next/link"
 
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { Templates } from "@/lib/templates"
+
 export default function Toolbar({
   onToggleRightSidebar,
+  onInsertTemplate,
 }: {
   onToggleRightSidebar: () => void
+  onInsertTemplate: (template: any) => void
 }) {
   return (
     <div className="h-16 border-b flex items-center justify-between px-6 bg-background">
@@ -24,15 +30,32 @@ export default function Toolbar({
 
         <Separator orientation="vertical" className="h-6" />
 
-        <Input
-          defaultValue="Untitled Design"
-          className="w-56"
-        />
+        <Input defaultValue="Untitled Design" className="w-56" />
       </div>
 
       {/* Right */}
       <div className="flex items-center space-x-3">
-        <Button variant="outline">Templates</Button>
+
+        {/* ---------- TEMPLATES DROPDOWN ---------- */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">Templates</Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent>
+            {Object.entries(Templates).map(([key, template]) => (
+              <DropdownMenuItem
+                key={key}
+                onClick={() => onInsertTemplate(template)}
+                className="cursor-pointer"
+              >
+                {template.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* ---------------------------------------- */}
 
         <Button variant="outline">
           <Upload className="mr-2 h-4 w-4" /> Import
