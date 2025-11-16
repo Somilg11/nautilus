@@ -21,8 +21,10 @@ const nodeTypes = { nautilusNode: NautilusNode }
 
 export default function Canvas({
   onOpenSidebar,
+  onInsertTemplate,
 }: {
   onOpenSidebar: () => void
+  onInsertTemplate: (t: any) => void
 }) {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const {
