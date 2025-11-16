@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@radix-ui/react-context-menu": "^2.2.16",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",
@@ -22,6 +24,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-flow-renderer": "^10.3.17",
+    "react-hotkeys-hook": "^5.2.1",
     "react-icons": "^5.5.0",
     "reactflow": "^11.11.4",
     "tailwind-merge": "^3.4.0",

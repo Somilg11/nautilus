@@ -1,94 +1,145 @@
-/* eslint-disable react-hooks/preserve-manual-memoization */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import React, { useCallback, useRef, useState } from "react"
+import React, { useEffect, useRef } from "react"
 import ReactFlow, {
-  addEdge,
   Background,
   Controls,
-  Connection,
-  Edge,
-  Node,
-  useNodesState,
-  useEdgesState,
-  ReactFlowInstance,
   MarkerType,
+  ReactFlowInstance,
+  NodeChange,
+  EdgeChange,
+  Connection,
 } from "react-flow-renderer"
 
 import { createNode } from "@/lib/flow-utils"
+import { useFlow } from "@/lib/flow-context"
+import NautilusNode from "@/components/nodes/NautilusNode"
 import "@/styles/canvas.css"
 
-export default function Canvas() {
-  const reactFlowWrapper = useRef<HTMLDivElement | null>(null)
-  const [reactFlowInstance, setReactFlowInstance] =
-    useState<ReactFlowInstance | null>(null)
+const nodeTypes = { nautilusNode: NautilusNode }
 
-  const initialNodes: Node[] = [
-    { id: "1", data: { label: "Web Server" }, position: { x: 250, y: 5 } },
-    { id: "2", data: { label: "Database" }, position: { x: 250, y: 200 } },
-  ]
+export default function Canvas({
+  onOpenSidebar,
+}: {
+  onOpenSidebar: () => void
+}) {
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
+  const {
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    reactFlowInstance,
+    setReactFlowInstance,
+    setSelectedNodeId,
+  } = useFlow()
 
-  const initialEdges: Edge[] = [
-    {
-      id: "e1-2",
-      source: "1",
-      target: "2",
-      animated: true,
+  const onInit = (instance: ReactFlowInstance) => {
+    setReactFlowInstance(instance)
+  }
+
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+  }
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (!reactFlowInstance || !wrapperRef.current) return
+
+    const compId = e.dataTransfer.getData("application/reactflow")
+    if (!compId) return
+
+    const bounds = wrapperRef.current.getBoundingClientRect()
+    const position = reactFlowInstance.project({
+      x: e.clientX - bounds.left,
+      y: e.clientY - bounds.top,
+    })
+
+    const newNode = createNode(compId, position, {
+      label: compId,
+      icon: compId,
+      color: "default",
+    })
+
+    newNode.type = "nautilusNode"
+
+    setNodes((prev) => [...prev, newNode])
+  }
+
+  const onNodeClick = (_e: any, node: any) => {
+    setSelectedNodeId(node.id)
+  }
+
+  const onNodeDoubleClick = (_e: any, node: any) => {
+    setSelectedNodeId(node.id)
+    onOpenSidebar()
+  }
+
+  const onNodesChange = (changes: NodeChange[]) => {
+    setNodes((prev) => {
+      const updated = [...prev]
+      for (const c of changes) {
+        if (c.type === "position" && c.position) {
+          const index = updated.findIndex((n) => n.id === c.id)
+          if (index >= 0)
+            updated[index] = { ...updated[index], position: c.position }
+        }
+      }
+      return updated
+    })
+  }
+
+  const onEdgesChange = (changes: EdgeChange[]) => {
+    setEdges((prev) => {
+      let updated = [...prev]
+      for (const c of changes) {
+        if (c.type === "remove") {
+          updated = updated.filter((e) => e.id !== c.id)
+        }
+      }
+      return updated
+    })
+  }
+
+  const onConnect = (params: Connection) => {
+    const edge = {
+      id: crypto.randomUUID(),
+      source: params.source ?? "",
+      target: params.target ?? "",
+      sourceHandle: params.sourceHandle ?? undefined,
+      targetHandle: params.targetHandle ?? undefined,
       markerEnd: { type: MarkerType.Arrow },
-    },
-  ]
+    }
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+    setEdges((prev) => [...prev, edge])
+  }
 
-  const onConnect = useCallback(
-    (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
-    []
-  )
-
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault()
-    event.dataTransfer.dropEffect = "move"
+  // Listen for custom “openSidebar” events from NautilusNode
+  useEffect(() => {
+    const openHandler = () => onOpenSidebar()
+    window.addEventListener("openSidebar", openHandler)
+    return () => window.removeEventListener("openSidebar", openHandler)
   }, [])
 
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault()
-
-      if (!reactFlowWrapper.current || !reactFlowInstance) return
-
-      const componentId = event.dataTransfer.getData("application/reactflow")
-      if (!componentId) return
-
-      const bounds = reactFlowWrapper.current.getBoundingClientRect()
-      const position = reactFlowInstance.project({
-        x: event.clientX - bounds.left,
-        y: event.clientY - bounds.top,
-      })
-
-      const node = createNode(componentId, position, { label: componentId })
-      setNodes((nds) => nds.concat(node))
-    },
-    [reactFlowInstance, setNodes]
-  )
-
   return (
-    <div
-      ref={reactFlowWrapper}
-      className="flex-1 h-full relative bg-canvas-pattern"
-    >
+    <div ref={wrapperRef} className="flex-1 h-full bg-canvas-pattern">
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
+        onInit={onInit}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClick}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onInit={setReactFlowInstance}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
         fitView
       >
-        <Background gap={20} />
+        <Background gap={20} size={1} />
         <Controls />
       </ReactFlow>
     </div>

@@ -35,13 +35,10 @@ export default function LeftSidebar() {
   }
 
   return (
-    <aside className="w-72 border-r h-full flex flex-col">
-      <div className="p-4">
-        <h3 className="font-semibold">Components</h3>
-        <p className="text-sm text-muted-foreground">Drag to add to canvas.</p>
-      </div>
+    <aside className="w-72 border-r h-full flex flex-col bg-card">
+      <div className="p-4 font-semibold text-lg">Components</div>
 
-      <ScrollArea className="px-4 pb-4 flex-1">
+      <ScrollArea className="h-full p-4">
         <div className="grid grid-cols-2 gap-3">
           {COMPONENTS.map((c) => {
             const Icon = c.icon
@@ -50,10 +47,10 @@ export default function LeftSidebar() {
                 key={c.id}
                 draggable
                 onDragStart={(e) => onDragStart(e, c.id)}
-                className="border rounded-md p-2 h-24 flex flex-col items-center justify-center text-sm cursor-grab hover:shadow"
+                className="rounded-xl border bg-background hover:bg-accent cursor-grab p-3 flex flex-col items-center justify-center gap-2 shadow-sm"
               >
-                <Icon className="h-6 w-6 mb-2" />
-                <div className="text-center">{c.label}</div>
+                <Icon className="h-6 w-6" />
+                <span className="text-sm text-center">{c.label}</span>
               </div>
             )
           })}
