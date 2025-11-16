@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
@@ -78,6 +79,42 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     }),
     [nodes, edges, reactFlowInstance, selectedNodeId]
   )
+
+  // Listen to global import event
+useEffect(() => {
+  function handleImport(e: any) {
+    const { nodes, edges } = e.detail
+    setNodes(nodes)
+    setEdges(edges)
+  }
+
+  function handleRunFlow() {
+    // Simple validation logic
+    if (nodes.length === 0) {
+      alert("No nodes in the diagram.")
+      return
+    }
+
+    const ids = new Set(nodes.map((n) => n.id))
+    for (const edge of edges) {
+      if (!ids.has(edge.source) || !ids.has(edge.target)) {
+        alert("Invalid edges detected. Cannot run flow.")
+        return
+      }
+    }
+
+    alert("Flow executed successfully! (Simulation)")
+  }
+
+  window.addEventListener("nautilus-import", handleImport)
+  window.addEventListener("nautilus-run", handleRunFlow)
+
+  return () => {
+    window.removeEventListener("nautilus-import", handleImport)
+    window.removeEventListener("nautilus-run", handleRunFlow)
+  }
+}, [nodes, edges])
+
 
   return <FlowContext.Provider value={value}>{children}</FlowContext.Provider>
 }

@@ -18,6 +18,7 @@ type NautilusNodeProps = {
     description?: string
     color?: string
     icon?: string
+    __glow?: boolean
   }
 }
 
@@ -83,7 +84,9 @@ export default function NautilusNode({ id, data }: NautilusNodeProps) {
   return (
     <ContextMenu>
       <ContextMenuTrigger>
-        <div className="min-w-40 max-w-xs rounded-lg overflow-hidden border shadow-sm select-none">
+        <div
+  className={`min-w-40 max-w-xs rounded-lg overflow-hidden border shadow-sm ${data.__glow ? "node-glow" : ""}`}
+>
           {/* Header */}
           <div
             className={`flex items-center gap-2 px-3 py-2 text-white ${bgFor(
