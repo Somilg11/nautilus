@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/context-menu"
 
 import { Handle, Position } from "react-flow-renderer"
-import { Database, Server, User } from "lucide-react"
 import { useFlow } from "@/lib/flow-context"
+import { NodeIcons } from "./node-icons"
 
 type NautilusNodeProps = {
   id: string
@@ -23,15 +23,7 @@ type NautilusNodeProps = {
 }
 
 function pickIcon(name?: string) {
-  switch (name) {
-    case "database_sql":
-      return <Database className="h-4 w-4" />
-    case "web_server":
-    case "api_server":
-      return <Server className="h-4 w-4" />
-    default:
-      return <User className="h-4 w-4" />
-  }
+  return NodeIcons[name ?? "service"] ?? NodeIcons["service"]
 }
 
 function bgFor(color?: string) {
@@ -61,33 +53,34 @@ export default function NautilusNode({ id, data }: NautilusNodeProps) {
     setNodes((prev) => {
       const node = prev.find((n) => n.id === id)
       if (!node) return prev
-      const newNode = {
-        ...node,
-        id: crypto.randomUUID(),
-        position: {
-          x: node.position.x + 40,
-          y: node.position.y + 40,
+      return [
+        ...prev,
+        {
+          ...node,
+          id: crypto.randomUUID(),
+          position: {
+            x: node.position.x + 40,
+            y: node.position.y + 40,
+          },
         },
-      }
-      return [...prev, newNode]
+      ]
     })
   }
 
   const editNode = () => {
     setSelectedNodeId(id)
-    // NOTE: Canvas handles opening the sidebar on double-click,
-    // but context menu "Edit" should also open it.
-    const openEvent = new CustomEvent("openSidebar")
-    window.dispatchEvent(openEvent)
+    window.dispatchEvent(new CustomEvent("openSidebar"))
   }
 
   return (
     <ContextMenu>
       <ContextMenuTrigger>
         <div
-  className={`min-w-40 max-w-xs rounded-lg overflow-hidden border shadow-sm ${data.__glow ? "node-glow" : ""}`}
->
-          {/* Header */}
+          className={`min-w-40 max-w-xs rounded-lg overflow-hidden border shadow-sm ${
+            data.__glow ? "node-glow" : ""
+          }`}
+        >
+          {/* HEADER */}
           <div
             className={`flex items-center gap-2 px-3 py-2 text-white ${bgFor(
               data.color
@@ -96,12 +89,13 @@ export default function NautilusNode({ id, data }: NautilusNodeProps) {
             <div className="flex items-center justify-center h-6 w-6">
               {pickIcon(data.icon)}
             </div>
+
             <div className="font-semibold text-sm truncate">
               {data.label || "Node"}
             </div>
           </div>
 
-          {/* Body */}
+          {/* BODY */}
           <div className="p-3 bg-card">
             {data.description ? (
               <div className="text-sm text-muted-foreground">
@@ -114,9 +108,9 @@ export default function NautilusNode({ id, data }: NautilusNodeProps) {
             )}
           </div>
 
-          {/* Handles */}
-          <Handle type="target" position={Position.Top} style={{ borderRadius: 3 }} />
-          <Handle type="source" position={Position.Bottom} style={{ borderRadius: 3 }} />
+          {/* HANDLES */}
+          <Handle type="target" position={Position.Top} />
+          <Handle type="source" position={Position.Bottom} />
         </div>
       </ContextMenuTrigger>
 

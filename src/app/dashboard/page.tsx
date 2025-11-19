@@ -5,6 +5,7 @@ import Toolbar from "@/components/toolbar"
 import LeftSidebar from "@/components/left-sidebar"
 import Canvas from "@/components/canvas"
 import RightSidebar from "@/components/right-sidebar"
+import EditingTools from "@/components/editing-tools"
 import { FlowProvider, useFlow } from "@/lib/flow-context"
 
 function DashboardInner() {
@@ -16,6 +17,7 @@ function DashboardInner() {
   return (
     <div className="flex flex-col h-screen">
       
+      {/* TOP APP TOOLBAR */}
       <Toolbar
         onToggleRightSidebar={() => setRightOpen(true)}
         onInsertTemplate={(template) => {
@@ -25,12 +27,17 @@ function DashboardInner() {
         onToggleLeftSidebar={() => setLeftOpen((p) => !p)}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      {/* 🔥 NEW — EDITING TOOLS (Canvas toolbar) */}
+      <EditingTools />
+
+      {/* MAIN LAYOUT */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
         <div
           className={`
             transition-all duration-300 ease-in-out
             ${leftOpen ? "w-72" : "w-0"}
             overflow-hidden border-r
+            h-full min-h-0
           `}
         >
           <LeftSidebar collapsed={!leftOpen} />
@@ -38,10 +45,6 @@ function DashboardInner() {
 
         <Canvas
           onOpenSidebar={() => setRightOpen(true)}
-          onInsertTemplate={(template) => {
-            setNodes(template.nodes)
-            setEdges(template.edges)
-          }}
         />
       </div>
 

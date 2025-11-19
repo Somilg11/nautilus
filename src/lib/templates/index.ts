@@ -1,8 +1,8 @@
 import { ThreeTierTemplate } from "./three-tier"
 import { MicroservicesTemplate } from "./microservices"
-import { UberTemplate } from "./most-asked/uber"
-import { InstagramTemplate } from "./most-asked/instagram"
-import { SpotifyTemplate } from "./most-asked/spotify"
+import { UberTemplate } from "./big/uber"
+import { InstagramTemplate } from "./big/instagram"
+import { SpotifyTemplate } from "./big/spotify"
 
 export const AllTemplates = [
   ThreeTierTemplate,
