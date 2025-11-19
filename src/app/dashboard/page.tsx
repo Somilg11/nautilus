@@ -9,25 +9,32 @@ import { FlowProvider, useFlow } from "@/lib/flow-context"
 
 function DashboardInner() {
   const [rightOpen, setRightOpen] = useState(false)
+  const [leftOpen, setLeftOpen] = useState(true)
 
-  // ⭐ FIX: get setNodes & setEdges from FlowProvider
   const { setNodes, setEdges } = useFlow()
 
   return (
     <div className="flex flex-col h-screen">
-
-      {/* Toolbar */}
+      
       <Toolbar
         onToggleRightSidebar={() => setRightOpen(true)}
         onInsertTemplate={(template) => {
           setNodes(template.nodes)
           setEdges(template.edges)
         }}
+        onToggleLeftSidebar={() => setLeftOpen((p) => !p)}
       />
 
-      {/* Main Layout */}
       <div className="flex flex-1 overflow-hidden">
-        <LeftSidebar />
+        <div
+          className={`
+            transition-all duration-300 ease-in-out
+            ${leftOpen ? "w-72" : "w-0"}
+            overflow-hidden border-r
+          `}
+        >
+          <LeftSidebar collapsed={!leftOpen} />
+        </div>
 
         <Canvas
           onOpenSidebar={() => setRightOpen(true)}
@@ -38,7 +45,6 @@ function DashboardInner() {
         />
       </div>
 
-      {/* Right Sidebar Drawer */}
       <RightSidebar open={rightOpen} onOpenChange={setRightOpen} />
     </div>
   )

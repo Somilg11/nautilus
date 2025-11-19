@@ -1,49 +1,71 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Upload, Download, Play, Sparkles } from "lucide-react"
+import { Upload, Download, Play, Sparkles, Share2, RotateCcw, RotateCw, Camera, LayoutGrid } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { ModeToggle } from "./mode-toggle"
 import { GiNautilusShell } from "react-icons/gi"
 import Link from "next/link"
+import { HiMenu } from "react-icons/hi"
+import LZString from "lz-string"
+
+import * as htmlToImage from "html-to-image"
+import { toast } from "sonner"
 
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu"
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip"
 
-import { Templates } from "@/lib/templates"
 import { useFlow } from "@/lib/flow-context"
+import TemplateDialog from "./template-dialog"
 
 export default function Toolbar({
   onToggleRightSidebar,
   onInsertTemplate,
+  onToggleLeftSidebar,
 }: {
   onToggleRightSidebar: () => void
   onInsertTemplate: (template: any) => void
+  onToggleLeftSidebar: () => void
 }) {
-  const { nodes, edges } = useFlow()
+  const { nodes, edges, projectName, setProjectName, undo, redo, canUndo, canRedo, isSaved } = useFlow()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [tplOpen, setTplOpen] = useState(false)
 
   /* ---------------------------
         EXPORT JSON
   --------------------------- */
   function handleExport() {
-    const data = JSON.stringify({ nodes, edges }, null, 2)
-    const blob = new Blob([data], { type: "application/json" })
+    try {
+      const safeName = projectName
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-+|-+$/g, "")
+        .toLowerCase()
 
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "nautilus-design.json"
-    a.click()
+      const data = JSON.stringify(
+        { name: projectName, nodes, edges },
+        null,
+        2
+      )
+      const blob = new Blob([data], { type: "application/json" })
 
-    URL.revokeObjectURL(url)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${safeName || "design"}.json`
+      a.click()
+
+      URL.revokeObjectURL(url)
+
+      toast.success("Exported successfully")
+    } catch (err) {
+      toast.error("Failed to export")
+    }
   }
 
   /* ---------------------------
@@ -62,18 +84,19 @@ export default function Toolbar({
       try {
         const parsed = JSON.parse(event.target?.result as string)
         if (!parsed.nodes || !parsed.edges) {
-          alert("Invalid diagram file. Missing 'nodes' or 'edges'.")
+          toast.error("Invalid JSON: Missing nodes or edges.")
           return
         }
 
-        // Broadcast to FlowProvider
         window.dispatchEvent(
           new CustomEvent("nautilus-import", {
-            detail: { nodes: parsed.nodes, edges: parsed.edges },
+            detail: { nodes: parsed.nodes, edges: parsed.edges, name: parsed.name },
           })
         )
+
+        toast.success("Imported successfully!")
       } catch (err) {
-        alert("Invalid JSON file.")
+        toast.error("Invalid JSON file.")
       }
     }
 
@@ -81,17 +104,23 @@ export default function Toolbar({
   }
 
   /* ---------------------------
-        MANUAL SAVE BUTTON
+        SHARE LINK
   --------------------------- */
-  function handleSave() {
+  function handleShare() {
     try {
-      localStorage.setItem(
-        "nautilus-canvas-v1",
-        JSON.stringify({ nodes, edges })
-      )
-      alert("Design saved successfully!")
-    } catch (err) {
-      alert("Failed to save!")
+      const payload = {
+        name: projectName,
+        nodes,
+        edges,
+      }
+
+      const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(payload))
+      const url = `${window.location.origin}/dashboard?d=${compressed}`
+
+      navigator.clipboard.writeText(url)
+      toast("Share link copied to clipboard")
+    } catch {
+      toast.error("Failed to generate link")
     }
   }
 
@@ -100,48 +129,122 @@ export default function Toolbar({
   --------------------------- */
   function handleRun() {
     window.dispatchEvent(new Event("nautilus-run"))
+    toast("Running flow… (simulation)")
   }
+
+  /* ---------------------------
+        SCREENSHOT (PNG) of Canvas
+        Captures the first element with class ".react-flow"
+  --------------------------- */
+  /* ---------------------------
+      SCREENSHOT FIX (SVG → PNG)
+--------------------------- */
+async function handleScreenshot() {
+  try {
+    const flowWrapper = document.querySelector(".react-flow") as HTMLElement | null
+    if (!flowWrapper) {
+      toast.error("Canvas not found")
+      return
+    }
+
+    // Ensure white/transparent background
+    const dataUrl = await htmlToImage.toPng(flowWrapper, {
+      backgroundColor: "white",
+      pixelRatio: 2, // HD export
+      style: {
+        transform: "none",          // Remove ReactFlow zoom transform
+      },
+    })
+
+    const link = document.createElement("a")
+    link.href = dataUrl
+    link.download = `${projectName || "diagram"}.png`
+    link.click()
+
+    toast.success("PNG exported successfully!")
+  } catch (err) {
+    console.error(err)
+    toast.error("Failed to export PNG")
+  }
+}
+
 
   return (
     <div className="h-16 border-b flex items-center justify-between px-6 bg-background">
-      
-      {/* -------- LEFT SECTION -------- */}
-      <div className="flex items-center space-x-4">
+
+      {/* LEFT SECTION */}
+      <div className="flex items-center space-x-3">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onToggleLeftSidebar}>
+              <HiMenu className="h-6 w-6" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Toggle Sidebar</TooltipContent>
+        </Tooltip>
+
         <Link href="/" className="flex items-center hover:opacity-80 transition">
           <GiNautilusShell className="h-7 w-7 text-primary" />
         </Link>
 
         <Separator orientation="vertical" className="h-6" />
 
-        <Input defaultValue="Untitled Design" className="w-56" />
+        {/* PROJECT NAME */}
+        <Input
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
+          className="w-56"
+        />
       </div>
 
-      {/* -------- RIGHT SECTION -------- */}
-      <div className="flex items-center space-x-3">
+      {/* RIGHT SECTION */}
+      <div className="flex items-center space-x-2">
 
-        {/* TEMPLATES MENU */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">Templates</Button>
-          </DropdownMenuTrigger>
+        {/* Undo */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={() => undo()} disabled={!canUndo}>
+              <RotateCcw className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{canUndo ? "Undo (Ctrl/Cmd+Z)" : "Nothing to undo"}</TooltipContent>
+        </Tooltip>
 
-          <DropdownMenuContent>
-            {Object.entries(Templates).map(([key, template]) => (
-              <DropdownMenuItem
-                key={key}
-                onClick={() => onInsertTemplate(template)}
-                className="cursor-pointer"
-              >
-                {template.name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Redo */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={() => redo()} disabled={!canRedo}>
+              <RotateCw className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{canRedo ? "Redo (Ctrl/Cmd+Shift+Z)" : "Nothing to redo"}</TooltipContent>
+        </Tooltip>
 
-        {/* IMPORT */}
-        <Button variant="outline" onClick={handleImportClick}>
-          <Upload className="mr-2 h-4 w-4" /> Import
-        </Button>
+        {/* Templates */}
+        <Tooltip>
+  <TooltipTrigger asChild>
+    <Button variant="ghost" size="icon" onClick={() => setTplOpen(true)}>
+      <LayoutGrid className="h-5 w-5" />
+    </Button>
+  </TooltipTrigger>
+  <TooltipContent>Templates</TooltipContent>
+</Tooltip>
+
+<TemplateDialog
+  open={tplOpen}
+  onOpenChange={setTplOpen}
+  onSelect={(tpl) => onInsertTemplate(tpl)}
+/>
+
+        {/* Import */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleImportClick}>
+              <Upload className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Import</TooltipContent>
+        </Tooltip>
 
         <input
           ref={fileInputRef}
@@ -151,30 +254,64 @@ export default function Toolbar({
           onChange={handleImport}
         />
 
-        {/* EXPORT */}
-        <Button variant="outline" onClick={handleExport}>
-          <Download className="mr-2 h-4 w-4" /> Export
-        </Button>
+        {/* Export */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleExport}>
+              <Download className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Export</TooltipContent>
+        </Tooltip>
 
-        {/* SAVE */}
-        <Button onClick={handleSave}>Save</Button>
+        {/* Share */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleShare}>
+              <Share2 className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Share</TooltipContent>
+        </Tooltip>
 
-        <Separator orientation="vertical" className="h-6" />
+        {/* Screenshot */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleScreenshot}>
+              <Camera className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Export PNG</TooltipContent>
+        </Tooltip>
 
-        {/* RUN */}
-        <Button variant="outline" onClick={handleRun}>
-          <Play className="mr-2 h-4 w-4" /> Run Flow
-        </Button>
+        {/* Run */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={handleRun}>
+              <Play className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Run Flow</TooltipContent>
+        </Tooltip>
 
-        {/* AI ASSISTANT */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleRightSidebar}
-          className="hover:bg-accent"
-        >
-          <Sparkles className="h-5 w-5 text-primary" />
-        </Button>
+        {/* Save indicator */}
+        <div className="flex items-center gap-2 px-2">
+          <div
+            className={`h-2 w-2 rounded-full ${isSaved ? "bg-emerald-500" : "bg-rose-500 animate-pulse"}`}
+            title={isSaved ? "Saved" : "Unsaved changes"}
+          />
+          {/* <span className="text-sm text-muted-foreground">{isSaved ? "Saved" : "Unsaved"}</span> */}
+        </div>
+
+        {/* AI */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={onToggleRightSidebar}>
+              <Sparkles className="h-5 w-5 text-primary" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>AI Assistant</TooltipContent>
+        </Tooltip>
 
         <ModeToggle />
       </div>
