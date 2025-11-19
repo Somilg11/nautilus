@@ -9,7 +9,7 @@ export default function Navbar() {
             <GiNautilusShell className="mr-2 h-6 w-6" />
             <h1 className="text-2xl font-bold">nautilus</h1>
             </div>
-            <a href="https://github.com/" target="_blank" rel="noreferrer">
+            <a href="https://github.com/Somilg11/nautilus" target="_blank" rel="noreferrer">
                 <Button variant="ghost">
                     <Github className="mr-2 h-5 w-5" /> GitHub
                 </Button>
