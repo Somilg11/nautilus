@@ -1,5 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import APIKeyInput from "@/components/ui/APIKeyInput"
+import { usePromptSuggestions } from "@/lib/usePromptSuggestions"
+
 
 import { useState, useEffect } from "react"
 import {
@@ -175,6 +180,7 @@ export default function RightSidebar({
 
   const [prompt, setPrompt] = useState("")
   const [loading, setLoading] = useState(false)
+  const { suggestions, visible, setVisible } = usePromptSuggestions(prompt)
 
   async function handleGenerate() {
     try {
@@ -367,19 +373,74 @@ export default function RightSidebar({
               </div>
             </ScrollArea>
 
-            {/* PROMPT INPUT */}
-            <div className="border-t p-3 flex gap-2">
-              <Textarea
-                className="flex-1"
-                placeholder="e.g. Microservices with auth, queue, billing…"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-              />
+            {/* PROMPT INPUT (FREEZE-FIXED) */}
 
-              <Button onClick={handleGenerate} disabled={loading}>
-                {loading ? "..." : <Send className="h-5 w-5" />}
-              </Button>
-            </div>
+
+       {/* PROMPT INPUT */}
+
+            {/* PROMPT INPUT */}
+<div className="border-t p-3 flex flex-col gap-3 relative">
+
+{/* TEXTAREA */}
+<Textarea
+  className="flex-1 min-h-[100px]"
+  placeholder="e.g. Microservices with auth, queue, billing…"
+  value={prompt}
+  onChange={(e) => setPrompt(e.target.value)}
+  onKeyDown={(e) => e.stopPropagation()} // prevent ReactFlow freeze
+/>
+
+{/* AI SUGGESTIONS */}
+{visible && suggestions.length > 0 && (
+  <div
+    className="
+      absolute bottom-[90px] left-3 right-3 
+      bg-white dark:bg-gray-900
+      shadow-lg rounded-lg border z-50 
+      max-h-60 overflow-auto animate-in fade-in
+    "
+  >
+
+    {/* CLOSE BUTTON */}
+    <div className="flex justify-end p-2">
+      <button
+        onClick={() => setVisible(false)}
+        className="text-xs text-gray-500 hover:text-gray-700"
+      >
+        ✕ Close
+      </button>
+    </div>
+
+    {/* SUGGESTION ITEMS */}
+    {suggestions.map((s, i) => (
+      <div
+        key={i}
+        className="
+          px-3 py-2 text-sm cursor-pointer
+          hover:bg-gray-100 dark:hover:bg-gray-800
+          rounded-md transition
+        "
+        onMouseDown={() => {  // ← FIX double-click issue
+          setPrompt(s)
+          setVisible(false)
+        }}
+      >
+        {s}
+      </div>
+    ))}
+  </div>
+)}
+
+{/* SEND BUTTON */}
+<Button onClick={handleGenerate} disabled={loading}>
+  {loading ? "..." : <Send className="h-5 w-5" />}
+</Button>
+</div>
+
+
+
+
+
 
           </TabsContent>
 
@@ -388,41 +449,29 @@ export default function RightSidebar({
           ==================================================== */}
           <TabsContent value="settings" className="p-4 space-y-4">
 
-            <div>
-              <label>OpenAI API Key</label>
-              <Input
-                type="password"
-                value={openaiKey}
-                onChange={(e) => setOpenaiKey(e.target.value)}
-              />
-            </div>
+            <APIKeyInput
+              label="OpenAI API Key"
+              value={openaiKey}
+              onChange={setOpenaiKey}
+            />
 
-            <div>
-              <label>Gemini API Key</label>
-              <Input
-                type="password"
-                value={geminiKey}
-                onChange={(e) => setGeminiKey(e.target.value)}
-              />
-            </div>
+            <APIKeyInput
+              label="Gemini API Key"
+              value={geminiKey}
+              onChange={setGeminiKey}
+            />
 
-            <div>
-              <label>Claude API Key</label>
-              <Input
-                type="password"
-                value={claudeKey}
-                onChange={(e) => setClaudeKey(e.target.value)}
-              />
-            </div>
+            <APIKeyInput
+              label="Claude API Key"
+              value={claudeKey}
+              onChange={setClaudeKey}
+            />
 
-            <div>
-              <label>Groq API Key</label>
-              <Input
-                type="password"
-                value={groqKey}
-                onChange={(e) => setGroqKey(e.target.value)}
-              />
-            </div>
+            <APIKeyInput
+              label="Groq API Key"
+              value={groqKey}
+              onChange={setGroqKey}
+            />
 
             <Button onClick={saveKeys} className="w-full">
               Save Keys

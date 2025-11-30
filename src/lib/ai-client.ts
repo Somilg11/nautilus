@@ -1,64 +1,95 @@
 // src/lib/ai-client.ts
+import { GoogleGenerativeAI } from "@google/generative-ai"
 import { FLOW_SCHEMA } from "./ai-schema"
 
-/**
- * Try to extract a JSON substring from a text blob.
- * Strategies:
- *  - Look for a JSON code fence ```json ... ```
- *  - Look for the first {...} balanced block
- *  - Look for the last {...} balanced block
- */
+/* -------------------------------------------------------
+   JSON Extractor
+------------------------------------------------------- */
 function extractJSON(text: string): string | null {
   if (!text) return null
 
-  // 1) code fence with json
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
-  if (fenceMatch && fenceMatch[1]) {
-    return fenceMatch[1].trim()
-  }
+  const block = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  if (block?.[1]) return block[1].trim()
 
-  // 2) find first balanced JSON object (naive but effective)
-  const firstBrace = text.indexOf("{")
-  if (firstBrace !== -1) {
-    // attempt to find matching closing brace by scanning
+  const first = text.indexOf("{")
+  if (first !== -1) {
     let depth = 0
-    for (let i = firstBrace; i < text.length; i++) {
-      const ch = text[i]
-      if (ch === "{") depth++
-      else if (ch === "}") {
-        depth--
-        if (depth === 0) {
-          const candidate = text.slice(firstBrace, i + 1)
-          return candidate.trim()
-        }
-      }
+    for (let i = first; i < text.length; i++) {
+      if (text[i] === "{") depth++
+      if (text[i] === "}") depth--
+      if (depth === 0) return text.slice(first, i + 1).trim()
     }
   }
 
-  // 3) fallback: try to find the last {...} block
-  const lastOpen = text.lastIndexOf("{")
-  const lastClose = text.lastIndexOf("}")
-  if (lastOpen !== -1 && lastClose !== -1 && lastClose > lastOpen) {
-    const candidate = text.slice(lastOpen, lastClose + 1)
-    return candidate.trim()
-  }
+  const lo = text.lastIndexOf("{")
+  const lc = text.lastIndexOf("}")
+  if (lo !== -1 && lc !== -1 && lc > lo) return text.slice(lo, lc + 1).trim()
 
   return null
 }
 
-/** unified generator: attempts to parse model outputs robustly */
-export async function generateFlow(prompt: string, model: string, keys: Record<string, string>) {
+/* -------------------------------------------------------
+   Unified Flow Generator
+------------------------------------------------------- */
+export async function generateFlow(
+  prompt: string,
+  model: string,
+  keys: Record<string, string>
+) {
   const combinedPrompt = `
-You are an AI system architect. Convert the following request into a system diagram JSON.
+You are an AI system architect.
+
+Convert this request into STRICT JSON ONLY.
 
 ${prompt}
 
 ${FLOW_SCHEMA}
 
-IMPORTANT: Reply with only the JSON object and nothing else. If you include any text, put the JSON inside a \`\`\`json code block\`\`\`.
+RULES:
+- Return ONLY JSON.
+- JSON MUST include: { "nodes": [], "edges": [] }
+- No explanation text.
+- If explanation exists, wrap output in \`\`\`json code block\`\`\`.
 `
 
+  /* -------------------------------------------------------
+     GEMINI (SDK VERSION — NO URL) ✅
+  ------------------------------------------------------- */
+  if (model === "gemini") {
+    if (!keys.gemini) throw new Error("Missing Gemini API key")
+
+    console.log("⚡ Using Gemini SDK")
+
+    const genAI = new GoogleGenerativeAI(keys.gemini)
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: "application/json"
+      }
+    })
+
+    const result = await model.generateContent(combinedPrompt)
+    const rawText = result.response.text()
+    console.log("🔥 RAW GEMINI TEXT:", rawText)
+
+    const json = extractJSON(rawText) ?? rawText
+
+    try {
+      return JSON.parse(json)
+    } catch (err) {
+      console.error("❌ Gemini JSON Error:", err)
+      console.error("RAW:", rawText)
+      throw new Error("Invalid JSON from Gemini")
+    }
+  }
+
+  /* -------------------------------------------------------
+     OPENAI
+  ------------------------------------------------------- */
   if (model === "openai") {
+    console.log("⚡ OPENAI REQUEST")
+
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -68,73 +99,30 @@ IMPORTANT: Reply with only the JSON object and nothing else. If you include any 
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: combinedPrompt }],
-        temperature: 0,
-        max_tokens: 2000,
+        response_format: { type: "json_object" },
       }),
     })
 
     const raw = await res.json()
-    console.log("OpenAI raw:", raw)
-    const txt = raw?.choices?.[0]?.message?.content ?? raw?.choices?.[0]?.text
-    if (!txt) throw new Error("Empty OpenAI response")
-    const jsonText = extractJSON(txt) || txt
+    const txt = raw?.choices?.[0]?.message?.content ?? ""
+
+    const json = extractJSON(txt) ?? txt
+
     try {
-      return JSON.parse(jsonText)
+      return JSON.parse(json)
     } catch (err) {
-      console.error("OpenAI JSON parse failed, raw text:", txt)
-      throw new Error("Failed to parse JSON from OpenAI response")
+      console.error("❌ OPENAI PARSE ERROR:", err)
+      console.error("RAW:", txt)
+      throw new Error("Invalid JSON from OpenAI")
     }
   }
 
-  if (model === "gemini") {
-  const apiKey = keys.gemini
-  if (!apiKey) throw new Error("Missing Gemini key")
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: combinedPrompt }],
-          },
-        ],
-      }),
-    }
-  )
-
-  const raw = await res.json()
-  console.log("Gemini raw:", raw)
-
-  const rawText =
-    raw?.candidates?.[0]?.content?.parts?.[0]?.text ??
-    raw?.candidates?.[0]?.content?.[0]?.text ??
-    raw?.candidates?.[0]?.content ??
-    ""
-
-  const jsonText = extractJSON(rawText) || rawText
-
-  try {
-    const parsed = JSON.parse(jsonText)
-
-    // schema validation
-    if (!parsed.nodes || !parsed.edges) {
-      throw new Error("Missing nodes/edges")
-    }
-
-    return parsed
-  } catch (err) {
-    console.error("Gemini JSON parse failed:", rawText)
-    throw new Error("Failed to parse JSON from Gemini")
-  }
-}
-
-
+  /* -------------------------------------------------------
+     CLAUDE
+  ------------------------------------------------------- */
   if (model === "claude") {
-    // Anthropic example — adapt to your API response shape
+    console.log("⚡ CLAUDE REQUEST")
+
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -144,24 +132,21 @@ IMPORTANT: Reply with only the JSON object and nothing else. If you include any 
       body: JSON.stringify({
         model: "claude-3-opus-20240229",
         messages: [{ role: "user", content: combinedPrompt }],
+        temperature: 0,
       }),
     })
-    const raw = await res.json()
-    console.log("Claude raw:", raw)
-    const txt = raw?.completion ?? raw?.result ?? raw?.response ?? raw?.messages?.[0]?.content?.[0]?.text
-    if (!txt) throw new Error("Empty Claude response")
-    const jsonText = extractJSON(txt) || txt
-    try {
-      return JSON.parse(jsonText)
-    } catch (err) {
-      console.error("Claude JSON parse failed, raw text:", txt)
-      throw new Error("Failed to parse JSON from Claude response")
-    }
-  }
 
-  if (model === "groq") {
-    // Placeholder — adapt to Groq's response format if/when you integrate
-    throw new Error("Groq integration not implemented in this helper")
+    const raw = await res.json()
+    const txt = raw?.content?.[0]?.text ?? raw?.completion ?? ""
+
+    const json = extractJSON(txt) ?? txt
+
+    try {
+      return JSON.parse(json)
+    } catch (err) {
+      console.error("❌ CLAUDE ERROR:", err)
+      throw new Error("Invalid JSON from Claude")
+    }
   }
 
   throw new Error("Unsupported model")
