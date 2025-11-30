@@ -194,6 +194,7 @@ export default function RightSidebar({
 
   const [prompt, setPrompt] = useState("")
   const [loading, setLoading] = useState(false)
+  const [messages, setMessages] = useState<Array<{ role: "user" | "ai"; content: string }>>([])
 
   async function handleGenerate() {
     if (!prompt.trim()) return
@@ -219,10 +220,10 @@ export default function RightSidebar({
 
       const response: AIResponse = await generateFlow(userMsg, model, keys)
 
-      if (response.type === "message") {
+      if ("type" in response && response.type === "message") {
         setMessages(prev => [...prev, { role: "ai", content: response.content }])
-      } else if (response.type === "diagram" || ((response as any).nodes && (response as any).edges)) {
-        const data = response as any
+      } else if (("type" in response && response.type === "diagram") || ("nodes" in response && "edges" in response)) {
+        const data = response as { nodes: any[]; edges: any[]; message?: string }
         // Render Diagram
         if (!data.nodes || !data.edges) {
           setMessages(prev => [...prev, { role: "ai", content: "I tried to generate a diagram but something went wrong with the data format." }])
