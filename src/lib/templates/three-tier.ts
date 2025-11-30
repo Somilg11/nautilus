@@ -2,40 +2,92 @@ import { MarkerType } from "react-flow-renderer"
 
 export const ThreeTierTemplate = {
   id: "three-tier",
-  name: "3-Tier Architecture",
-  description: "Client → API → Database tiered layout",
+  name: "Production 3-Tier Web App",
+  description: "Scalable architecture with LB, Cache, and DB Replication",
   nodes: [
+    // Tier 1: Presentation / Client
     {
       id: "client",
       type: "nautilusNode",
-      position: { x: 200, y: 50 },
-      data: { label: "Client", icon: "client_web", color: "blue" },
+      position: { x: 250, y: 0 },
+      data: { label: "Client (Browser/Mobile)", icon: "client_web", color: "blue" },
     },
     {
-      id: "api",
+      id: "dns",
       type: "nautilusNode",
-      position: { x: 200, y: 200 },
-      data: { label: "API Server", icon: "api_server", color: "green" },
+      position: { x: 250, y: 100 },
+      data: { label: "DNS (Route53)", icon: "dns", color: "purple" },
     },
     {
-      id: "db",
+      id: "cdn",
       type: "nautilusNode",
-      position: { x: 200, y: 350 },
-      data: { label: "Database", icon: "database_sql", color: "red" },
+      position: { x: 450, y: 100 },
+      data: { label: "CDN (Cloudflare)", icon: "cdn", color: "orange" },
+    },
+
+    // Tier 2: Application / Logic
+    {
+      id: "lb",
+      type: "nautilusNode",
+      position: { x: 250, y: 200 },
+      data: { label: "Load Balancer (Nginx)", icon: "load_balancer", color: "green" },
+    },
+    {
+      id: "web-server-1",
+      type: "nautilusNode",
+      position: { x: 100, y: 350 },
+      data: { label: "Web Server 1", icon: "web_server", color: "green" },
+    },
+    {
+      id: "web-server-2",
+      type: "nautilusNode",
+      position: { x: 400, y: 350 },
+      data: { label: "Web Server 2", icon: "web_server", color: "green" },
+    },
+
+    // Caching Layer
+    {
+      id: "cache",
+      type: "nautilusNode",
+      position: { x: 600, y: 350 },
+      data: { label: "Cache (Redis)", icon: "redis", color: "red" },
+    },
+
+    // Tier 3: Data
+    {
+      id: "db-primary",
+      type: "nautilusNode",
+      position: { x: 150, y: 500 },
+      data: { label: "Primary DB (Postgres)", icon: "postgres", color: "blue" },
+    },
+    {
+      id: "db-replica",
+      type: "nautilusNode",
+      position: { x: 350, y: 500 },
+      data: { label: "Read Replica", icon: "postgres", color: "blue" },
     },
   ],
   edges: [
-    {
-      id: "e1",
-      source: "client",
-      target: "api",
-      markerEnd: { type: MarkerType.Arrow },
-    },
-    {
-      id: "e2",
-      source: "api",
-      target: "db",
-      markerEnd: { type: MarkerType.Arrow },
-    },
+    // Client -> DNS
+    { id: "e1", source: "client", target: "dns", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    // Client -> CDN (Static assets)
+    { id: "e2", source: "client", target: "cdn", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, label: "Static Assets" },
+    // DNS -> LB
+    { id: "e3", source: "dns", target: "lb", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+
+    // LB -> Web Servers
+    { id: "e4", source: "lb", target: "web-server-1", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e5", source: "lb", target: "web-server-2", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+
+    // Web Servers -> Cache
+    { id: "e6", source: "web-server-1", target: "cache", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true },
+    { id: "e7", source: "web-server-2", target: "cache", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true },
+
+    // Web Servers -> DB
+    { id: "e8", source: "web-server-1", target: "db-primary", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e9", source: "web-server-2", target: "db-primary", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+
+    // DB Replication
+    { id: "e10", source: "db-primary", target: "db-replica", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, label: "Replication" },
   ],
 }

@@ -261,52 +261,53 @@ export default function LeftSidebar({
     <aside className="w-72 border-r h-full flex flex-col bg-card min-h-0">
 
 
-  {/* Search */}
-  <div className="p-3">
-    <Input
-      placeholder="Search components..."
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-    />
-  </div>
+      {/* Search */}
+      <div className="p-3">
+        <Input
+          placeholder="Search components..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => e.stopPropagation()}
+        />
+      </div>
 
-  {/* Scrollable Content */}
-  <ScrollArea className="flex-1 px-3 pb-3">
-    <Accordion type="multiple" className="space-y-1">
-      {CATEGORIES.map((category) => {
-        const filtered = category.items.filter((i) =>
-          i.label.toLowerCase().includes(search.toLowerCase())
-        )
+      {/* Scrollable Content */}
+      <ScrollArea className="flex-1 px-3 pb-3 min-h-0">
+        <Accordion type="multiple" className="space-y-1">
+          {CATEGORIES.map((category) => {
+            const filtered = category.items.filter((i) =>
+              i.label.toLowerCase().includes(search.toLowerCase())
+            )
 
-        if (filtered.length === 0) return null
+            if (filtered.length === 0) return null
 
-        return (
-          <AccordionItem key={category.title} value={category.title}>
-            <AccordionTrigger>{category.title}</AccordionTrigger>
-            <AccordionContent>
-              <div className="grid grid-cols-2 gap-3 py-2">
-                {filtered.map((c) => {
-                  const Icon = c.icon
-                  return (
-                    <div
-                      key={c.id}
-                      draggable
-                      onDragStart={(e) => onDragStart(e, c.id)}
-                      className="rounded-xl border bg-background hover:bg-accent cursor-grab p-3 flex flex-col items-center justify-center gap-2 shadow-sm transition"
-                    >
-                      <Icon className="h-6 w-6" />
-                      <span className="text-xs text-center">{c.label}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        )
-      })}
-    </Accordion>
-  </ScrollArea>
-</aside>
+            return (
+              <AccordionItem key={category.title} value={category.title}>
+                <AccordionTrigger>{category.title}</AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid grid-cols-2 gap-3 py-2">
+                    {filtered.map((c) => {
+                      const Icon = c.icon
+                      return (
+                        <div
+                          key={c.id}
+                          draggable
+                          onDragStart={(e) => onDragStart(e, c.id)}
+                          className="rounded-xl border bg-background hover:bg-accent cursor-grab p-3 flex flex-col items-center justify-center gap-2 shadow-sm transition"
+                        >
+                          <Icon className="h-6 w-6" />
+                          <span className="text-xs text-center">{c.label}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )
+          })}
+        </Accordion>
+      </ScrollArea>
+    </aside>
   )
 }
 
