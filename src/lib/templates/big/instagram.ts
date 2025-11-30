@@ -2,40 +2,110 @@ import { MarkerType } from "react-flow-renderer"
 
 export const InstagramTemplate = {
   id: "instagram",
-  name: "Instagram System",
-  description: "Photo sharing with feed ranking, reels, stories, search, and notifications.",
-
+  name: "Instagram Architecture",
+  description: "Photo sharing with heavy read/write and media storage",
   nodes: [
-    { id: "mobile_app", type: "nautilusNode", data: { label: "Mobile App", icon: "client_mobile", color: "blue" }, position: { x: 200, y: 50 } },
-    { id: "api_gateway", type: "nautilusNode", data: { label: "API Gateway", icon: "api_gateway", color: "green" }, position: { x: 200, y: 150 } },
+    // Client
+    {
+      id: "mobile-app",
+      type: "nautilusNode",
+      position: { x: 300, y: 0 },
+      data: { label: "Mobile App", icon: "client_mobile", color: "pink" },
+    },
 
-    { id: "user_service", type: "nautilusNode", data: { label: "User Service", icon: "microservice", color: "green" }, position: { x: 70, y: 260 } },
-    { id: "media_service", type: "nautilusNode", data: { label: "Media Upload", icon: "microservice", color: "yellow" }, position: { x: 200, y: 260 } },
-    { id: "feed_service", type: "nautilusNode", data: { label: "Feed Ranking", icon: "microservice", color: "orange" }, position: { x: 350, y: 260 } },
+    // Edge
+    {
+      id: "cdn",
+      type: "nautilusNode",
+      position: { x: 500, y: 100 },
+      data: { label: "CDN (Cloudfront)", icon: "cdn", color: "orange" },
+    },
+    {
+      id: "lb",
+      type: "nautilusNode",
+      position: { x: 300, y: 150 },
+      data: { label: "Load Balancer", icon: "load_balancer", color: "green" },
+    },
 
-    { id: "photos_s3", type: "nautilusNode", data: { label: "Photos Storage (S3)", icon: "storage_object", color: "red" }, position: { x: 200, y: 380 } },
-    { id: "user_db", type: "nautilusNode", data: { label: "Users DB", icon: "postgres", color: "red" }, position: { x: 70, y: 380 } },
-    { id: "feed_cache", type: "nautilusNode", data: { label: "Feed Cache (Redis)", icon: "redis", color: "red" }, position: { x: 350, y: 380 } },
+    // App Layer
+    {
+      id: "app-server-1",
+      type: "nautilusNode",
+      position: { x: 150, y: 300 },
+      data: { label: "App Server (Django)", icon: "web_server", color: "blue" },
+    },
+    {
+      id: "app-server-2",
+      type: "nautilusNode",
+      position: { x: 450, y: 300 },
+      data: { label: "App Server (Django)", icon: "web_server", color: "blue" },
+    },
 
-    { id: "notifications", type: "nautilusNode", data: { label: "Notifications", icon: "rabbitmq", color: "pink" }, position: { x: 200, y: 500 } },
+    // Services
+    {
+      id: "feed-service",
+      type: "nautilusNode",
+      position: { x: 650, y: 300 },
+      data: { label: "Feed Service", icon: "microservice", color: "purple" },
+    },
 
-    { id: "kafka", type: "nautilusNode", data: { label: "Event Stream (Kafka)", icon: "kafka", color: "orange" }, position: { x: 200, y: 630 } },
-    { id: "analytics", type: "nautilusNode", data: { label: "Analytics Engine", icon: "microservice", color: "gray" }, position: { x: 350, y: 630 } },
+    // Data Layer
+    {
+      id: "user-db",
+      type: "nautilusNode",
+      position: { x: 150, y: 450 },
+      data: { label: "User DB (Postgres)", icon: "postgres", color: "blue" },
+    },
+    {
+      id: "media-storage",
+      type: "nautilusNode",
+      position: { x: 500, y: 550 },
+      data: { label: "Object Storage (S3)", icon: "s3", color: "orange" },
+    },
+    {
+      id: "feed-cache",
+      type: "nautilusNode",
+      position: { x: 650, y: 450 },
+      data: { label: "Feed Cache (Redis)", icon: "redis", color: "red" },
+    },
 
-    { id: "grafana", type: "nautilusNode", data: { label: "Grafana", icon: "grafana", color: "gray" }, position: { x: 200, y: 760 } },
+    // Async
+    {
+      id: "task-queue",
+      type: "nautilusNode",
+      position: { x: 300, y: 650 },
+      data: { label: "Task Queue (RabbitMQ)", icon: "rabbitmq", color: "orange" },
+    },
+    {
+      id: "image-processor",
+      type: "nautilusNode",
+      position: { x: 300, y: 750 },
+      data: { label: "Image Processor (Celery)", icon: "microservice", color: "yellow" },
+    },
   ],
-
   edges: [
-    { id: "1", source: "mobile_app", target: "api_gateway", markerEnd: { type: MarkerType.Arrow }},
-    { id: "2", source: "api_gateway", target: "user_service", markerEnd: { type: MarkerType.Arrow }},
-    { id: "3", source: "api_gateway", target: "media_service", markerEnd: { type: MarkerType.Arrow }},
-    { id: "4", source: "api_gateway", target: "feed_service", markerEnd: { type: MarkerType.Arrow }},
+    // Client -> Edge
+    { id: "e1", source: "mobile-app", target: "lb", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e2", source: "mobile-app", target: "cdn", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, label: "Fetch Images" },
 
-    { id: "5", source: "user_service", target: "user_db", markerEnd: { type: MarkerType.Arrow }},
-    { id: "6", source: "media_service", target: "photos_s3", markerEnd: { type: MarkerType.Arrow }},
-    { id: "7", source: "feed_service", target: "feed_cache", markerEnd: { type: MarkerType.Arrow }},
-    { id: "8", source: "feed_service", target: "kafka", markerEnd: { type: MarkerType.Arrow }},
+    // LB -> App Servers
+    { id: "e3", source: "lb", target: "app-server-1", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e4", source: "lb", target: "app-server-2", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
 
-    { id: "9", source: "kafka", target: "analytics", markerEnd: { type: MarkerType.Arrow }},
+    // App Servers -> Data
+    { id: "e5", source: "app-server-1", target: "user-db", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e6", source: "app-server-2", target: "user-db", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+
+    // App Servers -> S3
+    { id: "e7", source: "app-server-1", target: "media-storage", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, label: "Upload" },
+
+    // Feed Generation
+    { id: "e8", source: "app-server-2", target: "feed-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e9", source: "feed-service", target: "feed-cache", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+
+    // Async Processing
+    { id: "e10", source: "app-server-1", target: "task-queue", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true },
+    { id: "e11", source: "task-queue", target: "image-processor", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true },
+    { id: "e12", source: "image-processor", target: "media-storage", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, label: "Processed" },
   ],
 }

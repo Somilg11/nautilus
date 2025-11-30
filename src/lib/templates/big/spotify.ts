@@ -2,38 +2,106 @@ import { MarkerType } from "react-flow-renderer"
 
 export const SpotifyTemplate = {
   id: "spotify",
-  name: "Spotify – Music Streaming",
-  description: "Audio streaming, metadata service, playlists, recommendations, CDN.",
-
+  name: "Spotify Architecture",
+  description: "Music streaming with low latency and high availability",
   nodes: [
-    { id: "client", type: "nautilusNode", position: { x: 200, y: 40 }, data: { label: "Web/Mobile Client", icon: "client_mobile", color: "blue" } },
+    // Clients
+    {
+      id: "client-mobile",
+      type: "nautilusNode",
+      position: { x: 200, y: 0 },
+      data: { label: "Mobile App", icon: "client_mobile", color: "green" },
+    },
+    {
+      id: "client-desktop",
+      type: "nautilusNode",
+      position: { x: 400, y: 0 },
+      data: { label: "Desktop App", icon: "client_web", color: "green" },
+    },
 
-    { id: "gateway", type: "nautilusNode", position: { x: 200, y: 140 }, data: { label: "API Gateway", icon: "api_server", color: "green" } },
+    // Entry
+    {
+      id: "access-point",
+      type: "nautilusNode",
+      position: { x: 300, y: 150 },
+      data: { label: "Access Point (Gateway)", icon: "api_server", color: "black" },
+    },
 
-    { id: "auth", type: "nautilusNode", position: { x: 50, y: 260 }, data: { label: "Auth Service", icon: "auth", color: "green" } },
-    { id: "playlist", type: "nautilusNode", position: { x: 200, y: 260 }, data: { label: "Playlist Service", icon: "server", color: "green" } },
-    { id: "metadata", type: "nautilusNode", position: { x: 350, y: 260 }, data: { label: "Metadata Service", icon: "server", color: "green" } },
+    // Content Delivery
+    {
+      id: "cdn",
+      type: "nautilusNode",
+      position: { x: 600, y: 150 },
+      data: { label: "CDN (Audio Files)", icon: "cdn", color: "orange" },
+    },
 
-    { id: "cdn", type: "nautilusNode", position: { x: 200, y: 360 }, data: { label: "CDN (Audio Delivery)", icon: "cloud", color: "yellow" } },
+    // Services
+    {
+      id: "playlist-service",
+      type: "nautilusNode",
+      position: { x: 100, y: 300 },
+      data: { label: "Playlist Service", icon: "microservice", color: "blue" },
+    },
+    {
+      id: "search-service",
+      type: "nautilusNode",
+      position: { x: 300, y: 300 },
+      data: { label: "Search Service", icon: "microservice", color: "blue" },
+    },
+    {
+      id: "player-service",
+      type: "nautilusNode",
+      position: { x: 500, y: 300 },
+      data: { label: "Player Service", icon: "microservice", color: "blue" },
+    },
 
-    { id: "reco", type: "nautilusNode", position: { x: 200, y: 460 }, data: { label: "Recommendation Engine", icon: "server", color: "yellow" } },
+    // Data
+    {
+      id: "cassandra-cluster",
+      type: "nautilusNode",
+      position: { x: 200, y: 450 },
+      data: { label: "Cassandra Cluster", icon: "cassandra", color: "red" },
+    },
+    {
+      id: "elasticsearch",
+      type: "nautilusNode",
+      position: { x: 400, y: 450 },
+      data: { label: "Elasticsearch", icon: "elastic", color: "yellow" },
+    },
 
-    { id: "cache", type: "nautilusNode", position: { x: 60, y: 560 }, data: { label: "Redis Cache", icon: "cache", color: "yellow" } },
-    { id: "users_db", type: "nautilusNode", position: { x: 200, y: 560 }, data: { label: "Users DB", icon: "database_sql", color: "red" } },
-    { id: "tracks_db", type: "nautilusNode", position: { x: 350, y: 560 }, data: { label: "Tracks DB", icon: "database_sql", color: "red" } },
+    // Analytics
+    {
+      id: "kafka",
+      type: "nautilusNode",
+      position: { x: 300, y: 600 },
+      data: { label: "Log Aggregation (Kafka)", icon: "kafka", color: "orange" },
+    },
+    {
+      id: "hadoop",
+      type: "nautilusNode",
+      position: { x: 300, y: 750 },
+      data: { label: "Hadoop (Analytics)", icon: "database_sql", color: "yellow" },
+    },
   ],
-
   edges: [
-    { id: "e1", source: "client", target: "gateway", markerEnd: { type: MarkerType.Arrow }},
-    { id: "e2", source: "gateway", target: "auth", markerEnd: { type: MarkerType.Arrow }},
-    { id: "e3", source: "gateway", target: "playlist", markerEnd: { type: MarkerType.Arrow }},
-    { id: "e4", source: "gateway", target: "metadata", markerEnd: { type: MarkerType.Arrow }},
+    // Clients -> Access Point
+    { id: "e1", source: "client-mobile", target: "access-point", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e2", source: "client-desktop", target: "access-point", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
 
-    { id: "e5", source: "metadata", target: "cdn", markerEnd: { type: MarkerType.Arrow }},
-    { id: "e6", source: "playlist", target: "cache", markerEnd: { type: MarkerType.Arrow }},
-    { id: "e7", source: "auth", target: "users_db", markerEnd: { type: MarkerType.Arrow }},
-    { id: "e8", source: "metadata", target: "tracks_db", markerEnd: { type: MarkerType.Arrow }},
+    // Clients -> CDN
+    { id: "e3", source: "client-mobile", target: "cdn", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, label: "Stream Audio" },
 
-    { id: "e9", source: "playlist", target: "reco", markerEnd: { type: MarkerType.Arrow }},
-  ]
+    // Access Point -> Services
+    { id: "e4", source: "access-point", target: "playlist-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e5", source: "access-point", target: "search-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e6", source: "access-point", target: "player-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+
+    // Services -> Data
+    { id: "e7", source: "playlist-service", target: "cassandra-cluster", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e8", source: "search-service", target: "elasticsearch", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+
+    // Logging
+    { id: "e9", source: "player-service", target: "kafka", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true },
+    { id: "e10", source: "kafka", target: "hadoop", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true },
+  ],
 }
