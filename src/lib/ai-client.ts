@@ -3,10 +3,6 @@ import { FLOW_SCHEMA } from "./ai-schema"
 
 /**
  * Try to extract a JSON substring from a text blob.
- * Strategies:
- *  - Look for a JSON code fence ```json ... ```
- *  - Look for the first {...} balanced block
- *  - Look for the last {...} balanced block
  */
 function extractJSON(text: string): string | null {
   if (!text) return null
@@ -17,10 +13,9 @@ function extractJSON(text: string): string | null {
     return fenceMatch[1].trim()
   }
 
-  // 2) find first balanced JSON object (naive but effective)
+  // 2) find first balanced JSON object
   const firstBrace = text.indexOf("{")
   if (firstBrace !== -1) {
-    // attempt to find matching closing brace by scanning
     let depth = 0
     for (let i = firstBrace; i < text.length; i++) {
       const ch = text[i]
@@ -28,8 +23,7 @@ function extractJSON(text: string): string | null {
       else if (ch === "}") {
         depth--
         if (depth === 0) {
-          const candidate = text.slice(firstBrace, i + 1)
-          return candidate.trim()
+          return text.slice(firstBrace, i + 1).trim()
         }
       }
     }
@@ -39,24 +33,35 @@ function extractJSON(text: string): string | null {
   const lastOpen = text.lastIndexOf("{")
   const lastClose = text.lastIndexOf("}")
   if (lastOpen !== -1 && lastClose !== -1 && lastClose > lastOpen) {
-    const candidate = text.slice(lastOpen, lastClose + 1)
-    return candidate.trim()
+    return text.slice(lastOpen, lastClose + 1).trim()
   }
 
   return null
 }
 
-/** unified generator: attempts to parse model outputs robustly */
-export async function generateFlow(prompt: string, model: string, keys: Record<string, string>) {
-  const combinedPrompt = `
-You are an AI system architect. Convert the following request into a system diagram JSON.
+export type AIResponse =
+  | { type: "message"; content: string }
+  | { type: "diagram"; nodes: any[]; edges: any[]; message?: string }
 
-${prompt}
+/** unified generator: attempts to parse model outputs robustly */
+export async function generateFlow(prompt: string, model: string, keys: Record<string, string>): Promise<AIResponse> {
+  const combinedPrompt = `
+You are an AI system architect and assistant for Nautilus.
+User Request: "${prompt}"
+
+INSTRUCTIONS:
+1. If the user is just greeting you or asking a general question (e.g., "Hi", "How are you", "What is this?"), reply with a friendly message.
+   JSON Format: { "type": "message", "content": "Your reply here..." }
+
+2. If the user asks to design a system, architecture, or diagram (e.g., "Design Uber", "Microservices app"), generate the diagram.
+   JSON Format: { "type": "diagram", "nodes": [...], "edges": [...], "message": "Optional explanation..." }
 
 ${FLOW_SCHEMA}
 
-IMPORTANT: Reply with only the JSON object and nothing else. If you include any text, put the JSON inside a \`\`\`json code block\`\`\`.
+IMPORTANT: Reply with ONLY the JSON object. Do not include markdown formatting outside the JSON.
 `
+
+  let rawText = ""
 
   if (model === "openai") {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -68,101 +73,87 @@ IMPORTANT: Reply with only the JSON object and nothing else. If you include any 
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: combinedPrompt }],
-        temperature: 0,
+        temperature: 0.2,
         max_tokens: 2000,
       }),
     })
 
     const raw = await res.json()
-    console.log("OpenAI raw:", raw)
-    const txt = raw?.choices?.[0]?.message?.content ?? raw?.choices?.[0]?.text
-    if (!txt) throw new Error("Empty OpenAI response")
-    const jsonText = extractJSON(txt) || txt
-    try {
-      return JSON.parse(jsonText)
-    } catch (err) {
-      console.error("OpenAI JSON parse failed, raw text:", txt)
-      throw new Error("Failed to parse JSON from OpenAI response")
-    }
+    if (raw.error) throw new Error(raw.error.message)
+    rawText = raw?.choices?.[0]?.message?.content ?? ""
   }
 
-  if (model === "gemini") {
-  const apiKey = keys.gemini
-  if (!apiKey) throw new Error("Missing Gemini key")
+  else if (model === "gemini") {
+    const apiKey = keys.gemini
+    if (!apiKey) throw new Error("Missing Gemini key")
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: combinedPrompt }],
-          },
-        ],
-      }),
-    }
-  )
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: combinedPrompt }] }],
+        }),
+      }
+    )
 
-  const raw = await res.json()
-  console.log("Gemini raw:", raw)
+    const raw = await res.json()
+    if (raw.error) throw new Error(raw.error.message)
 
-  const rawText =
-    raw?.candidates?.[0]?.content?.parts?.[0]?.text ??
-    raw?.candidates?.[0]?.content?.[0]?.text ??
-    raw?.candidates?.[0]?.content ??
-    ""
-
-  const jsonText = extractJSON(rawText) || rawText
-
-  try {
-    const parsed = JSON.parse(jsonText)
-
-    // schema validation
-    if (!parsed.nodes || !parsed.edges) {
-      throw new Error("Missing nodes/edges")
-    }
-
-    return parsed
-  } catch (err) {
-    console.error("Gemini JSON parse failed:", rawText)
-    throw new Error("Failed to parse JSON from Gemini")
+    rawText =
+      raw?.candidates?.[0]?.content?.parts?.[0]?.text ??
+      raw?.candidates?.[0]?.content?.[0]?.text ??
+      ""
   }
-}
 
-
-  if (model === "claude") {
-    // Anthropic example — adapt to your API response shape
+  else if (model === "claude") {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "x-api-key": keys.claude,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: "claude-3-opus-20240229",
+        max_tokens: 2000,
         messages: [{ role: "user", content: combinedPrompt }],
       }),
     })
     const raw = await res.json()
-    console.log("Claude raw:", raw)
-    const txt = raw?.completion ?? raw?.result ?? raw?.response ?? raw?.messages?.[0]?.content?.[0]?.text
-    if (!txt) throw new Error("Empty Claude response")
-    const jsonText = extractJSON(txt) || txt
-    try {
-      return JSON.parse(jsonText)
-    } catch (err) {
-      console.error("Claude JSON parse failed, raw text:", txt)
-      throw new Error("Failed to parse JSON from Claude response")
-    }
+    if (raw.error) throw new Error(raw.error.message)
+    rawText = raw?.content?.[0]?.text ?? ""
   }
 
-  if (model === "groq") {
-    // Placeholder — adapt to Groq's response format if/when you integrate
-    throw new Error("Groq integration not implemented in this helper")
+  else if (model === "groq") {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${keys.groq}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama3-70b-8192",
+        messages: [{ role: "user", content: combinedPrompt }],
+        temperature: 0.2,
+        max_tokens: 2000,
+      }),
+    })
+    const raw = await res.json()
+    if (raw.error) throw new Error(raw.error.message)
+    rawText = raw?.choices?.[0]?.message?.content ?? ""
   }
 
-  throw new Error("Unsupported model")
+  if (!rawText) throw new Error("Empty response from AI provider")
+
+  const jsonText = extractJSON(rawText) || rawText
+  try {
+    const parsed = JSON.parse(jsonText)
+    return parsed
+  } catch (err) {
+    console.error("JSON parse failed:", rawText)
+    // Fallback: treat as message if parsing fails but text exists
+    return { type: "message", content: rawText }
+  }
 }

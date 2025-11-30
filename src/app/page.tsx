@@ -41,7 +41,7 @@ export default function NautilusLanding() {
 
         {/* 3. Docs (1 col, 2 rows high on desktop) */}
         <Link
-          href="/guide"
+          href="/docs"
           className={`${cardStyle} col-span-1 lg:row-span-2 items-end !justify-start p-6 group h-[200px] lg:h-auto`}
         >
           <span className="text-3xl font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white transition-colors">
