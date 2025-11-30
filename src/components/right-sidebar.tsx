@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Sheet,
   SheetContent,
@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Trash, Send, ChevronDown } from "lucide-react"
+import { Trash, Send, ChevronDown, User, Bot } from "lucide-react"
 
 import {
   Select,
@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { useFlow } from "@/lib/flow-context"
-import { generateFlow } from "@/lib/ai-client"
+import { generateFlow, AIResponse } from "@/lib/ai-client"
 import { MarkerType } from "react-flow-renderer"
 
 // AI Model Icons
@@ -54,6 +54,11 @@ const modelIcons: Record<AIModel, JSX.Element> = {
   gemini: <SiGoogle className="h-4 w-4 text-blue-500" />,
   claude: <TbBrandAnthropic className="h-4 w-4 text-amber-600" />,
   groq: <SiGroq className="h-4 w-4 text-red-600" />,
+}
+
+interface Message {
+  role: "user" | "ai"
+  content: string
 }
 
 /* ===========================================================
@@ -101,14 +106,14 @@ export default function RightSidebar({
         prev.map((n) =>
           n.id === selectedNode.id
             ? {
-                ...n,
-                data: {
-                  ...n.data,
-                  label: name,
-                  description: desc,
-                  color,
-                },
-              }
+              ...n,
+              data: {
+                ...n.data,
+                label: name,
+                description: desc,
+                color,
+              },
+            }
             : n
         )
       )
@@ -169,17 +174,42 @@ export default function RightSidebar({
     setGroqKey("")
   }
 
+  // Helper to check if key exists for dot indicator
+  const hasKey = (m: AIModel) => {
+    if (m === "openai") return !!openaiKey
+    if (m === "gemini") return !!geminiKey
+    if (m === "claude") return !!claudeKey
+    if (m === "groq") return !!groqKey
+    return false
+  }
+
   /* ---------------------------------------------
      AI FLOW GENERATION FUNCTION
   --------------------------------------------- */
 
   const [prompt, setPrompt] = useState("")
   const [loading, setLoading] = useState(false)
+  const [messages, setMessages] = useState<Message[]>([
+    { role: "ai", content: "Hello! I'm Nautilus AI. Ask me to design a system or just chat!" }
+  ])
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom of chat
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
 
   async function handleGenerate() {
-    try {
-      setLoading(true)
+    if (!prompt.trim()) return
 
+    const userMsg = prompt
+    setPrompt("")
+    setMessages(prev => [...prev, { role: "user", content: userMsg }])
+    setLoading(true)
+
+    try {
       const keys = {
         openai: openaiKey,
         gemini: geminiKey,
@@ -188,47 +218,52 @@ export default function RightSidebar({
       }
 
       if (!keys[model]) {
-        alert(`Missing API key for ${model}`)
+        setMessages(prev => [...prev, { role: "ai", content: `Please add an API key for ${model} in Settings.` }])
+        setLoading(false)
         return
       }
 
-      let data: any
-      try {
-        data = await generateFlow(prompt, model, keys)
-      } catch (err) {
-        console.error("AI ERROR:", err)
-        alert("Invalid AI JSON response. Try again.")
-        return
+      const response: AIResponse = await generateFlow(userMsg, model, keys)
+
+      if (response.type === "message") {
+        setMessages(prev => [...prev, { role: "ai", content: response.content }])
+      } else if (response.type === "diagram" || ((response as any).nodes && (response as any).edges)) {
+        const data = response as any
+        // Render Diagram
+        if (!data.nodes || !data.edges) {
+          setMessages(prev => [...prev, { role: "ai", content: "I tried to generate a diagram but something went wrong with the data format." }])
+          return
+        }
+
+        // Auto layout
+        let y = 30
+        const laidOutNodes = data.nodes.map((n: any) => ({
+          ...n,
+          type: "nautilusNode",
+          position: { x: 250, y: (y += 140) },
+        }))
+
+        const laidOutEdges = data.edges.map((e: any, i: number) => ({
+          id: "e" + i,
+          source: e.source,
+          target: e.target,
+          markerEnd: { type: MarkerType.Arrow },
+        }))
+
+        setNodes(laidOutNodes)
+        setEdges(laidOutEdges)
+
+        const msg = data.message || "I've generated the diagram for you on the canvas."
+        setMessages(prev => [...prev, { role: "ai", content: msg }])
+        // Keep sidebar open so user sees the message
+      } else {
+        // Fallback for unknown response type
+        setMessages(prev => [...prev, { role: "ai", content: "I received a response but couldn't understand the format." }])
       }
 
-      if (!data?.nodes || !data?.edges) {
-        console.error("Invalid AI response:", data)
-        alert("AI did not return nodes/edges.")
-        return
-      }
-
-      // Auto layout
-      let y = 30
-      const laidOutNodes = data.nodes.map((n: any) => ({
-        ...n,
-        type: "nautilusNode",
-        position: { x: 250, y: (y += 140) },
-      }))
-
-      const laidOutEdges = data.edges.map((e: any, i: number) => ({
-        id: "e" + i,
-        source: e.source,
-        target: e.target,
-        markerEnd: { type: MarkerType.Arrow },
-      }))
-
-      setNodes(laidOutNodes)
-      setEdges(laidOutEdges)
-
-      onOpenChange(false)
-    } catch (err) {
-      console.error("Flow generation failed:", err)
-      alert("AI failed to generate a diagram.")
+    } catch (err: any) {
+      console.error("AI ERROR:", err)
+      setMessages(prev => [...prev, { role: "ai", content: `Error: ${err.message || "Something went wrong."}` }])
     } finally {
       setLoading(false)
     }
@@ -240,15 +275,15 @@ export default function RightSidebar({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-96 p-0">
+      <SheetContent side="right" className="w-96 p-0 flex flex-col bg-background border-l">
 
-        <Tabs defaultValue="properties" className="h-full flex flex-col">
+        <Tabs defaultValue="properties" className="flex-1 flex flex-col h-full">
 
           {/* ---------------- TOP TABS ---------------- */}
-          <div className="border-b p-4">
-            <TabsList className="grid grid-cols-3">
+          <div className="border-b px-4 py-3">
+            <TabsList className="grid grid-cols-3 w-full">
               <TabsTrigger value="properties">Properties</TabsTrigger>
-              <TabsTrigger value="assistant">AI</TabsTrigger>
+              <TabsTrigger value="assistant">AI Chat</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
           </div>
@@ -256,47 +291,53 @@ export default function RightSidebar({
           {/* ====================================================
              PROPERTIES TAB
           ==================================================== */}
-          <TabsContent value="properties" className="flex-1 p-4">
+          <TabsContent value="properties" className="flex-1 p-4 overflow-y-auto">
             {!selectedNode ? (
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                Click a node to edit its properties.
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-center p-4">
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <User className="h-6 w-6 opacity-50" />
+                </div>
+                <p>Select a node on the canvas to edit its properties.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-
+              <div className="space-y-6">
                 <div>
-                  <label className="text-sm">Name</label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Label</label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-muted/50" onKeyDown={(e) => e.stopPropagation()} />
                 </div>
 
                 <div>
-                  <label className="text-sm">Description</label>
-                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Description</label>
+                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} className="bg-muted/50 min-h-[100px]" onKeyDown={(e) => e.stopPropagation()} />
                 </div>
 
                 <div>
-                  <label className="text-sm block mb-1">Color</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Color</label>
                   <Select onValueChange={setColor} value={color}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-muted/50">
                       <SelectValue placeholder="Select color" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="default">Default</SelectItem>
+                      <SelectItem value="default">Default (Gray)</SelectItem>
                       <SelectItem value="blue">Blue</SelectItem>
                       <SelectItem value="green">Green</SelectItem>
                       <SelectItem value="red">Red</SelectItem>
                       <SelectItem value="yellow">Yellow</SelectItem>
+                      <SelectItem value="purple">Purple</SelectItem>
+                      <SelectItem value="orange">Orange</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <Button
-                  variant="destructive"
-                  onClick={deleteNode}
-                  className="w-full"
-                >
-                  <Trash className="mr-2 h-4 w-4" /> Delete Node
-                </Button>
+                <div className="pt-4 border-t">
+                  <Button
+                    variant="destructive"
+                    onClick={deleteNode}
+                    className="w-full"
+                  >
+                    <Trash className="mr-2 h-4 w-4" /> Delete Node
+                  </Button>
+                </div>
 
               </div>
             )}
@@ -305,80 +346,99 @@ export default function RightSidebar({
           {/* ====================================================
              AI ASSISTANT TAB
           ==================================================== */}
-          <TabsContent value="assistant" className="flex-1 flex flex-col">
+          <TabsContent value="assistant" className="flex-1 flex flex-col h-full overflow-hidden data-[state=inactive]:hidden">
 
             {/* MODEL SELECTOR */}
-            <div className="flex items-center justify-between p-3 border-b">
-              <div className="font-semibold flex items-center gap-2">
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
+              <div className="text-sm font-medium flex items-center gap-2">
                 {modelIcons[model]}
-                {model.toUpperCase()}
+                <span className="capitalize">{model}</span>
               </div>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="icon"
-                    variant="outline"
-                    className="rounded-full h-8 w-8 flex items-center justify-center"
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 gap-1 text-xs"
                   >
-                    <ChevronDown className="h-4 w-4" />
+                    Change Model <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent className="w-44">
-
-                  <DropdownMenuItem
-                    onClick={() => setModel("openai")}
-                    className={model === "openai" ? "bg-accent" : ""}
-                  >
-                    <SiOpenai className="mr-2" /> OpenAI {openaiKey ? "✓" : "✗"}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setModel("gemini")}
-                    className={model === "gemini" ? "bg-accent" : ""}
-                  >
-                    <SiGoogle className="mr-2" /> Gemini {geminiKey ? "✓" : "✗"}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setModel("claude")}
-                    className={model === "claude" ? "bg-accent" : ""}
-                  >
-                    <TbBrandAnthropic className="mr-2" /> Claude {claudeKey ? "✓" : "✗"}
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => setModel("groq")}
-                    className={model === "groq" ? "bg-accent" : ""}
-                  >
-                    <SiGroq className="mr-2" /> Groq {groqKey ? "✓" : "✗"}
-                  </DropdownMenuItem>
-
+                <DropdownMenuContent align="end" className="w-48">
+                  {(["openai", "gemini", "claude", "groq"] as AIModel[]).map((m) => (
+                    <DropdownMenuItem
+                      key={m}
+                      onClick={() => setModel(m)}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        {modelIcons[m]}
+                        <span className="capitalize">{m}</span>
+                      </div>
+                      {/* Status Dot */}
+                      <div className={`w-2 h-2 rounded-full ${hasKey(m) ? "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]" : "bg-red-500/50"}`} />
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-
             </div>
 
             {/* CHAT AREA */}
-            <ScrollArea className="flex-1 p-4 space-y-4">
-              <div className="bg-muted p-3 rounded-lg">
-                <strong>AI:</strong> Describe the architecture you want generated.
-              </div>
-            </ScrollArea>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/5" ref={scrollRef}>
+              {messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${msg.role === "user"
+                      ? "bg-primary text-primary-foreground rounded-tr-none"
+                      : "bg-muted border border-border rounded-tl-none"
+                      }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bg-muted border border-border rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                    <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                    <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* PROMPT INPUT */}
-            <div className="border-t p-3 flex gap-2">
-              <Textarea
-                className="flex-1"
-                placeholder="e.g. Microservices with auth, queue, billing…"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-              />
-
-              <Button onClick={handleGenerate} disabled={loading}>
-                {loading ? "..." : <Send className="h-5 w-5" />}
-              </Button>
+            <div className="p-4 border-t bg-background">
+              <form
+                onSubmit={(e) => { e.preventDefault(); handleGenerate(); }}
+                className="relative"
+              >
+                <Input
+                  className="pr-12 py-6 bg-muted/50 border-muted-foreground/20 focus-visible:ring-1"
+                  placeholder="Design a system..."
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  disabled={loading}
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+                <Button
+                  size="icon"
+                  type="submit"
+                  disabled={loading || !prompt.trim()}
+                  className="absolute right-1 top-1 h-10 w-10 rounded-md"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </form>
+              <p className="text-[10px] text-muted-foreground text-center mt-2">
+                AI can make mistakes. Review generated diagrams.
+              </p>
             </div>
 
           </TabsContent>
@@ -386,55 +446,81 @@ export default function RightSidebar({
           {/* ====================================================
              SETTINGS TAB
           ==================================================== */}
-          <TabsContent value="settings" className="p-4 space-y-4">
+          <TabsContent value="settings" className="p-4 space-y-6 overflow-y-auto">
 
-            <div>
-              <label>OpenAI API Key</label>
-              <Input
-                type="password"
-                value={openaiKey}
-                onChange={(e) => setOpenaiKey(e.target.value)}
-              />
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">API Keys</h3>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <SiOpenai /> OpenAI
+                </label>
+                <Input
+                  type="password"
+                  placeholder="sk-..."
+                  value={openaiKey}
+                  onChange={(e) => setOpenaiKey(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <SiGoogle /> Gemini
+                </label>
+                <Input
+                  type="password"
+                  placeholder="AIza..."
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <TbBrandAnthropic /> Claude
+                </label>
+                <Input
+                  type="password"
+                  placeholder="sk-ant..."
+                  value={claudeKey}
+                  onChange={(e) => setClaudeKey(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <SiGroq /> Groq
+                </label>
+                <Input
+                  type="password"
+                  placeholder="gsk_..."
+                  value={groqKey}
+                  onChange={(e) => setGroqKey(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+              </div>
             </div>
 
-            <div>
-              <label>Gemini API Key</label>
-              <Input
-                type="password"
-                value={geminiKey}
-                onChange={(e) => setGeminiKey(e.target.value)}
-              />
+            <div className="pt-4 space-y-3">
+              <Button onClick={saveKeys} className="w-full">
+                Save API Keys
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={clearKeys}
+                className="w-full text-destructive hover:text-destructive"
+              >
+                Clear All Keys
+              </Button>
             </div>
 
-            <div>
-              <label>Claude API Key</label>
-              <Input
-                type="password"
-                value={claudeKey}
-                onChange={(e) => setClaudeKey(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label>Groq API Key</label>
-              <Input
-                type="password"
-                value={groqKey}
-                onChange={(e) => setGroqKey(e.target.value)}
-              />
-            </div>
-
-            <Button onClick={saveKeys} className="w-full">
-              Save Keys
-            </Button>
-
-            <Button
-              variant="destructive"
-              onClick={clearKeys}
-              className="w-full"
-            >
-              Clear Keys
-            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Keys are stored locally in your browser.
+            </p>
 
           </TabsContent>
 

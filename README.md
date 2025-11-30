@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nautilus 🐚
 
-## Getting Started
+**The Ultimate Open-Source System Design & Architecture Visualization Tool.**
 
-First, run the development server:
+![Nautilus Banner](https://images.unsplash.com/photo-1614726365723-49cfae92782f?q=80&w=2669&auto=format&fit=crop)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+> **"One of its kind. Free for everyone. Built for the community."**
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Nautilus is a powerful, agentic-ready diagramming tool designed for software architects, developers, and system designers. It combines the flexibility of a canvas with the intelligence of AI to help you visualize, plan, and document complex systems with ease.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+-   **AI-Powered Generation**: Generate complete system architectures from text prompts using OpenAI, Gemini, Claude, or Groq.
+-   **Smart Templates**: Jumpstart your design with production-grade templates for Netflix, Uber, WhatsApp, and more.
+-   **Rich Component Library**: Drag and drop hundreds of specialized icons for Cloud, DevOps, Databases, and more.
+-   **Intelligent Toolbar**: Group, align, distribute, and manage your nodes with precision tools.
+-   **Open Format**: Export and import your designs as simple JSON.
+-   **Dark Mode**: Sleek, modern interface optimized for long coding sessions.
 
-## Learn More
+## 🛠️ Getting Started
 
-To learn more about Next.js, take a look at the following resources:
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/Somilg11/nautilus.git
+    cd nautilus
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3.  **Run the development server**:
+    ```bash
+    npm run dev
+    ```
 
-## Deploy on Vercel
+4.  Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🤝 How to Contribute
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+We believe that great tools are built by great communities. Nautilus is 100% open-source and we welcome contributions of all kinds!
+
+### Contributing Templates
+
+Want to add a new architecture pattern?
+1.  Navigate to `src/lib/templates/`.
+2.  Create a new file (e.g., `my-awesome-arch.ts`).
+3.  Follow the standard template structure:
+    ```typescript
+    export const MyTemplate = {
+      id: "my-arch",
+      name: "My Awesome Architecture",
+      description: "A brief description...",
+      nodes: [ ... ],
+      edges: [ ... ]
+    }
+    ```
+4.  Register it in `src/lib/templates/index.ts`.
+5.  Submit a Pull Request!
+
+### Reporting Issues
+
+Found a bug? Have a feature request? Open an issue on our [GitHub Issues](https://github.com/Somilg11/nautilus/issues) page.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**Built with ❤️ by the Open Source Community.**
