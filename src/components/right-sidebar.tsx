@@ -1,29 +1,26 @@
-"use client"
+"use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { usePromptSuggestions } from "@/lib/usePromptSuggestions";
 
-import APIKeyInput from "@/components/ui/APIKeyInput"
-import { usePromptSuggestions } from "@/lib/usePromptSuggestions"
-
-
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
-} from "@/components/ui/sheet"
+} from "@/components/ui/sheet";
 
 import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
-} from "@/components/ui/tabs"
+} from "@/components/ui/tabs";
 
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Trash, Send, ChevronDown, User, Bot } from "lucide-react"
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Trash, Send, ChevronDown, User } from "lucide-react";
 
 import {
   Select,
@@ -31,50 +28,41 @@ import {
   SelectItem,
   SelectValue,
   SelectContent,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuItem
-} from "@/components/ui/dropdown-menu"
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
-import { useFlow } from "@/lib/flow-context"
-import { generateFlow, AIResponse } from "@/lib/ai-client"
-import { MarkerType } from "react-flow-renderer"
+import { useFlow } from "@/lib/flow-context";
+import { generateFlow, AIResponse } from "@/lib/ai-client";
+import { MarkerType } from "react-flow-renderer";
 
-// AI Model Icons
-import { SiOpenai, SiGoogle, SiPlanetscale as SiGroq } from "react-icons/si"
-import { SiClaude as TbBrandAnthropic } from "react-icons/si"
-import { JSX } from "react/jsx-runtime"
+import { SiOpenai, SiGoogle, SiPlanetscale as SiGroq } from "react-icons/si";
+import { SiClaude as TbBrandAnthropic } from "react-icons/si";
+import { JSX } from "react/jsx-runtime";
 
 /* -----------------------------
    AI MODEL TYPE
 ----------------------------- */
-type AIModel = "openai" | "gemini" | "claude" | "groq"
+type AIModel = "openai" | "gemini" | "claude" | "groq";
 
 const modelIcons: Record<AIModel, JSX.Element> = {
   openai: <SiOpenai className="h-4 w-4 text-primary" />,
   gemini: <SiGoogle className="h-4 w-4 text-blue-500" />,
   claude: <TbBrandAnthropic className="h-4 w-4 text-amber-600" />,
   groq: <SiGroq className="h-4 w-4 text-red-600" />,
-}
+};
 
-interface Message {
-  role: "user" | "ai"
-  content: string
-}
-
-/* ===========================================================
-   COMPONENT: RIGHT SIDEBAR
-=========================================================== */
 export default function RightSidebar({
   open,
   onOpenChange,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
   const {
     nodes,
@@ -82,127 +70,127 @@ export default function RightSidebar({
     setEdges,
     selectedNodeId,
     setSelectedNodeId,
-  } = useFlow()
+  } = useFlow();
 
-  const selectedNode =
-    nodes.find((n) => n.id === selectedNodeId) || null
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
 
   /* ---------------------------------------------
-     NODE PROPERTIES
+     NODE PROPERTIES STATES
   --------------------------------------------- */
-
-  const [name, setName] = useState("")
-  const [desc, setDesc] = useState("")
-  const [color, setColor] = useState("default")
+  const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [color, setColor] = useState("default");
 
   useEffect(() => {
     if (selectedNode) {
-      setName(selectedNode.data.label ?? "")
-      setDesc(selectedNode.data.description ?? "")
-      setColor(selectedNode.data.color ?? "default")
+      setName(selectedNode.data.label ?? "");
+      setDesc(selectedNode.data.description ?? "");
+      setColor(selectedNode.data.color ?? "default");
     }
-  }, [selectedNode])
+  }, [selectedNode]);
 
   useEffect(() => {
-    if (!selectedNode) return
+    if (!selectedNode) return;
 
     const t = setTimeout(() => {
       setNodes((prev) =>
         prev.map((n) =>
           n.id === selectedNode.id
             ? {
-              ...n,
-              data: {
-                ...n.data,
-                label: name,
-                description: desc,
-                color,
-              },
-            }
+                ...n,
+                data: {
+                  ...n.data,
+                  label: name,
+                  description: desc,
+                  color,
+                },
+              }
             : n
         )
-      )
-    }, 150)
+      );
+    }, 150);
 
-    return () => clearTimeout(t)
-  }, [name, desc, color])
+    return () => clearTimeout(t);
+  }, [name, desc, color]);
 
   function deleteNode() {
-    if (!selectedNode) return
-    setNodes((prev) => prev.filter((n) => n.id !== selectedNode.id))
-    setSelectedNodeId(null)
-    onOpenChange(false)
+    if (!selectedNode) return;
+    setNodes((prev) => prev.filter((n) => n.id !== selectedNode.id));
+    setSelectedNodeId(null);
+    onOpenChange(false);
   }
 
   /* ---------------------------------------------
-     AI SETTINGS (Keys, Model)
+     AI SETTINGS (Keys + Model)
   --------------------------------------------- */
+  const [model, setModel] = useState<AIModel>("openai");
 
-  const [model, setModel] = useState<AIModel>("openai")
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [geminiKey, setGeminiKey] = useState("");
+  const [claudeKey, setClaudeKey] = useState("");
+  const [groqKey, setGroqKey] = useState("");
 
-  const [openaiKey, setOpenaiKey] = useState("")
-  const [geminiKey, setGeminiKey] = useState("")
-  const [claudeKey, setClaudeKey] = useState("")
-  const [groqKey, setGroqKey] = useState("")
-
-  // Load keys on client only
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setOpenaiKey(localStorage.getItem("openai_key") || "")
-      setGeminiKey(localStorage.getItem("gemini_key") || "")
-      setClaudeKey(localStorage.getItem("claude_key") || "")
-      setGroqKey(localStorage.getItem("groq_key") || "")
+      setOpenaiKey(localStorage.getItem("openai_key") || "");
+      setGeminiKey(localStorage.getItem("gemini_key") || "");
+      setClaudeKey(localStorage.getItem("claude_key") || "");
+      setGroqKey(localStorage.getItem("groq_key") || "");
     }
-  }, [])
+  }, []);
+
+  const hasKey = (m: AIModel) => {
+    if (m === "openai") return !!openaiKey;
+    if (m === "gemini") return !!geminiKey;
+    if (m === "claude") return !!claudeKey;
+    if (m === "groq") return !!groqKey;
+    return false;
+  };
 
   function saveKeys() {
-    if (typeof window === "undefined") return
-
-    localStorage.setItem("openai_key", openaiKey)
-    localStorage.setItem("gemini_key", geminiKey)
-    localStorage.setItem("claude_key", claudeKey)
-    localStorage.setItem("groq_key", groqKey)
-    alert("Keys saved!")
+    if (typeof window === "undefined") return;
+    localStorage.setItem("openai_key", openaiKey);
+    localStorage.setItem("gemini_key", geminiKey);
+    localStorage.setItem("claude_key", claudeKey);
+    localStorage.setItem("groq_key", groqKey);
+    alert("Keys saved!");
   }
 
   function clearKeys() {
-    if (typeof window === "undefined") return
+    if (typeof window === "undefined") return;
 
-    localStorage.removeItem("openai_key")
-    localStorage.removeItem("gemini_key")
-    localStorage.removeItem("claude_key")
-    localStorage.removeItem("groq_key")
+    localStorage.removeItem("openai_key");
+    localStorage.removeItem("gemini_key");
+    localStorage.removeItem("claude_key");
+    localStorage.removeItem("groq_key");
 
-    setOpenaiKey("")
-    setGeminiKey("")
-    setClaudeKey("")
-    setGroqKey("")
-  }
-
-  // Helper to check if key exists for dot indicator
-  const hasKey = (m: AIModel) => {
-    if (m === "openai") return !!openaiKey
-    if (m === "gemini") return !!geminiKey
-    if (m === "claude") return !!claudeKey
-    if (m === "groq") return !!groqKey
-    return false
+    setOpenaiKey("");
+    setGeminiKey("");
+    setClaudeKey("");
+    setGroqKey("");
   }
 
   /* ---------------------------------------------
-     AI FLOW GENERATION FUNCTION
+     AI CHAT STATES — KEEP THEM TOGETHER (IMPORTANT)
   --------------------------------------------- */
+  const [prompt, setPrompt] = useState(""); // FINAL CORRECT POSITION
+  const { suggestions, visible, setVisible } = usePromptSuggestions(prompt);
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<
+    Array<{ role: "user" | "ai"; content: string }>
+  >([]);
 
-  const [prompt, setPrompt] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [messages, setMessages] = useState<Array<{ role: "user" | "ai"; content: string }>>([])
-
+  /* ---------------------------------------------
+     AI CHAT HANLDER
+  --------------------------------------------- */
   async function handleGenerate() {
-    if (!prompt.trim()) return
+    if (!prompt.trim()) return;
 
-    const userMsg = prompt
-    setPrompt("")
-    setMessages(prev => [...prev, { role: "user", content: userMsg }])
-    setLoading(true)
+    const userMsg = prompt;
+    setPrompt("");
+
+    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+    setLoading(true);
 
     try {
       const keys = {
@@ -210,71 +198,79 @@ export default function RightSidebar({
         gemini: geminiKey,
         claude: claudeKey,
         groq: groqKey,
-      }
+      };
 
       if (!keys[model]) {
-        setMessages(prev => [...prev, { role: "ai", content: `Please add an API key for ${model} in Settings.` }])
-        setLoading(false)
-        return
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "ai",
+            content: `Please add an API key for ${model} in Settings.`,
+          },
+        ]);
+        setLoading(false);
+        return;
       }
 
-      const response: AIResponse = await generateFlow(userMsg, model, keys)
+      const response: AIResponse = await generateFlow(userMsg, model, keys);
 
       if ("type" in response && response.type === "message") {
-        setMessages(prev => [...prev, { role: "ai", content: response.content }])
-      } else if (("type" in response && response.type === "diagram") || ("nodes" in response && "edges" in response)) {
-        const data = response as { nodes: any[]; edges: any[]; message?: string }
-        // Render Diagram
-        if (!data.nodes || !data.edges) {
-          setMessages(prev => [...prev, { role: "ai", content: "I tried to generate a diagram but something went wrong with the data format." }])
-          return
-        }
+        setMessages((prev) => [
+          ...prev,
+          { role: "ai", content: response.content },
+        ]);
+      } else if ("nodes" in response && "edges" in response) {
+        let y = 30;
 
-        // Auto layout
-        let y = 30
-        const laidOutNodes = data.nodes.map((n: any) => ({
+        const laidOutNodes = response.nodes.map((n: any) => ({
           ...n,
           type: "nautilusNode",
           position: { x: 250, y: (y += 140) },
-        }))
+        }));
 
-        const laidOutEdges = data.edges.map((e: any, i: number) => ({
+        const laidOutEdges = response.edges.map((e: any, i: number) => ({
           id: "e" + i,
           source: e.source,
           target: e.target,
           markerEnd: { type: MarkerType.Arrow },
-        }))
+        }));
 
-        setNodes(laidOutNodes)
-        setEdges(laidOutEdges)
+        setNodes(laidOutNodes);
+        setEdges(laidOutEdges);
 
-        const msg = data.message || "I've generated the diagram for you on the canvas."
-        setMessages(prev => [...prev, { role: "ai", content: msg }])
-        // Keep sidebar open so user sees the message
-      } else {
-        // Fallback for unknown response type
-        setMessages(prev => [...prev, { role: "ai", content: "I received a response but couldn't understand the format." }])
+        const message = ("message" in response) 
+          ? (response as { message?: string }).message 
+          : undefined;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "ai",
+            content: message || "I've generated the diagram for you on the canvas.",
+          },
+        ]);
       }
-
     } catch (err: any) {
-      console.error("AI ERROR:", err)
-      setMessages(prev => [...prev, { role: "ai", content: `Error: ${err.message || "Something went wrong."}` }])
+      console.error("AI ERROR:", err);
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", content: `Error: ${err?.message || "Something went wrong."}` },
+      ]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
-  /* ===========================================================
-     RENDER
-  =========================================================== */
-
+  /* ---------------------------------------------
+     RENDER UI
+  --------------------------------------------- */
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-96 p-0 flex flex-col bg-background border-l">
-
-        <Tabs defaultValue="properties" className="flex-1 flex flex-col h-full">
-
-          {/* ---------------- TOP TABS ---------------- */}
+      <SheetContent
+        side="right"
+        className="w-96 p-0 flex flex-col bg-background border-l"
+      >
+        <Tabs defaultValue="properties" className="flex-1 flex flex-col">
           <div className="border-b px-4 py-3">
             <TabsList className="grid grid-cols-3 w-full">
               <TabsTrigger value="properties">Properties</TabsTrigger>
@@ -283,9 +279,7 @@ export default function RightSidebar({
             </TabsList>
           </div>
 
-          {/* ====================================================
-             PROPERTIES TAB
-          ==================================================== */}
+          {/* ---------------- PROPERTIES TAB ---------------- */}
           <TabsContent value="properties" className="flex-1 p-4 overflow-y-auto">
             {!selectedNode ? (
               <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-center p-4">
@@ -297,17 +291,33 @@ export default function RightSidebar({
             ) : (
               <div className="space-y-6">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Label</label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-muted/50" onKeyDown={(e) => e.stopPropagation()} />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+                    Label
+                  </label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="bg-muted/50"
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Description</label>
-                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} className="bg-muted/50 min-h-[100px]" onKeyDown={(e) => e.stopPropagation()} />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+                    Description
+                  </label>
+                  <Textarea
+                    value={desc}
+                    onChange={(e) => setDesc(e.target.value)}
+                    className="bg-muted/50 min-h-[100px]"
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Color</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+                    Color
+                  </label>
                   <Select onValueChange={setColor} value={color}>
                     <SelectTrigger className="bg-muted/50">
                       <SelectValue placeholder="Select color" />
@@ -333,16 +343,15 @@ export default function RightSidebar({
                     <Trash className="mr-2 h-4 w-4" /> Delete Node
                   </Button>
                 </div>
-
               </div>
             )}
           </TabsContent>
 
-          {/* ====================================================
-             AI ASSISTANT TAB
-          ==================================================== */}
-          <TabsContent value="assistant" className="flex-1 flex flex-col h-full overflow-hidden data-[state=inactive]:hidden">
-
+          {/* ---------------- AI CHAT TAB ---------------- */}
+          <TabsContent
+            value="assistant"
+            className="flex-1 flex flex-col h-full overflow-hidden"
+          >
             {/* MODEL SELECTOR */}
             <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
               <div className="text-sm font-medium flex items-center gap-2">
@@ -352,62 +361,97 @@ export default function RightSidebar({
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 gap-1 text-xs"
-                  >
+                  <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs">
                     Change Model <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent align="end" className="w-48">
-                  {(["openai", "gemini", "claude", "groq"] as AIModel[]).map((m) => (
-                    <DropdownMenuItem
-                      key={m}
-                      onClick={() => setModel(m)}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        {modelIcons[m]}
-                        <span className="capitalize">{m}</span>
-                      </div>
-                      {/* Status Dot */}
-                      <div className={`w-2 h-2 rounded-full ${hasKey(m) ? "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]" : "bg-red-500/50"}`} />
-                    </DropdownMenuItem>
-                  ))}
+                  {(["openai", "gemini", "claude", "groq"] as AIModel[]).map(
+                    (m) => (
+                      <DropdownMenuItem
+                        key={m}
+                        onClick={() => setModel(m)}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          {modelIcons[m]}
+                          <span className="capitalize">{m}</span>
+                        </div>
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            hasKey(m)
+                              ? "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]"
+                              : "bg-red-500/50"
+                          }`}
+                        />
+                      </DropdownMenuItem>
+                    )
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
 
-            {/* CHAT AREA */}
+            {/* CHAT HISTORY */}
             <ScrollArea className="flex-1 p-4 space-y-4">
               <div className="bg-muted p-3 rounded-lg">
                 <strong>AI:</strong> Describe the architecture you want generated.
               </div>
             </ScrollArea>
+          {/* PROMPT INPUT WITH SUGGESTIONS */}
+<div className="border-t p-3 flex flex-col gap-2 relative">
 
-            {/* PROMPT INPUT */}
-            <div className="border-t p-3 flex gap-2">
-              <Textarea
-                className="flex-1"
-                placeholder="e.g. Microservices with auth, queue, billing…"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-              />
+<Textarea
+  className="flex-1"
+  placeholder="e.g. Microservices with auth, queue, billing…"
+  value={prompt}
+  onChange={(e) => setPrompt(e.target.value)}
+  onKeyDown={(e) => e.stopPropagation()}
+  onKeyUp={(e) => e.stopPropagation()}
+  onKeyPress={(e) => e.stopPropagation()}
+/>
+{visible && suggestions.length > 0 && (
+  <div className="absolute left-3 right-3 bottom-16 
+                  bg-[#1E1E1E] text-white 
+                  border border-white/10 
+                  rounded-lg shadow-xl p-2 z-50">
 
-              <Button onClick={handleGenerate} disabled={loading}>
-                {loading ? "..." : <Send className="h-5 w-5" />}
-              </Button>
-            </div>
+    {/* Close (X) Button */}
+    <div className="flex justify-end mb-1">
+      <button
+        onClick={() => setVisible(false)}
+        className="text-xs px-2 py-1 hover:bg-white/10 rounded"
+      >
+        ✕
+      </button>
+    </div>
 
+    {suggestions.map((s, i) => (
+      <button
+        key={i}
+        onClick={() => {
+          setPrompt(s)
+          setVisible(false)
+        }}
+        className="w-full text-left px-3 py-2 
+                   rounded-md hover:bg-white/10 
+                   transition text-sm"
+      >
+        {s}
+      </button>
+    ))}
+  </div>
+)}
+
+<Button onClick={handleGenerate} disabled={loading} className="self-end">
+  {loading ? "..." : <Send className="h-5 w-5" />}
+</Button>
+
+</div>
           </TabsContent>
 
-          {/* ====================================================
-             SETTINGS TAB
-          ==================================================== */}
+          {/* ---------------- SETTINGS TAB ---------------- */}
           <TabsContent value="settings" className="p-4 space-y-4">
-
             <div>
               <label>OpenAI API Key</label>
               <Input
@@ -461,11 +505,9 @@ export default function RightSidebar({
             <p className="text-xs text-muted-foreground text-center">
               Keys are stored locally in your browser.
             </p>
-
           </TabsContent>
-
         </Tabs>
       </SheetContent>
     </Sheet>
-  )
+  );
 }

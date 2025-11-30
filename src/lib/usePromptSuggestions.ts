@@ -10,53 +10,66 @@ export function usePromptSuggestions(prompt: string) {
   const lastValue = useRef("")
 
   useEffect(() => {
-    // 🛑 1. When deleting / backspacing → DO NOT show suggestions
-    if (prompt.length < lastValue.current.length) {
-      lastValue.current = prompt
+    const prevValue = lastValue.current
+    lastValue.current = prompt
+  
+    // 🛑 DELETE / BACKSPACE → NO suggestions
+    if (prompt.length < prevValue.length) {
       setSuggestions([])
       setVisible(false)
       return
     }
-
-    lastValue.current = prompt
-
-    // 🛑 2. Do not show suggestions for small input
+  
+    // 🛑 Too small prompt → no suggestions
     if (!prompt || prompt.length < 4) {
       setSuggestions([])
       setVisible(false)
       return
     }
-
+  
     const timeout = setTimeout(async () => {
       try {
         const apiKey = process.env.NEXT_PUBLIC_GEMINI_KEY
         if (!apiKey) return
-
+  
         const genAI = new GoogleGenerativeAI(apiKey)
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
-
+  
         const result = await model.generateContent(
-            `Give exactly 4 very short crisp architecture ideas 6 to 8 words related to "${prompt}". 
-             No extra text, no bullet numbers, no sentences.`
-          )
-
+            `You are restricted to ONLY system design concepts.
+          
+          Generate EXACTLY 4 short suggestions (6–8 words each).
+          
+          RULES:
+          - ONLY system-design / distributed-systems / backend architecture concepts.
+          - Allowed topics: Redis, caching, queues, microservices, load balancers, API gateway,
+            sharding, failover, replication, streaming, message brokers, scaling, fault tolerance.
+          - STRICTLY NO concepts outside computer systems.
+          - NO intro, NO explanations, NO bullets, NO numbering.
+          - Output ONLY 4 plain lines.
+          - Each line must be inspired ONLY by user text: "${prompt}".`
+          );
+          
+          
+  
         const text = result.response.text() ?? ""
-
+  
         const arr = text
           .split("\n")
           .filter((s) => s.trim().length > 0)
           .slice(0, 4)
           .map((s) => s.replace(/^- /, "").trim())
-
+  
         setSuggestions(arr)
         setVisible(true)
       } catch (err) {
-        console.error("Suggestion error:", err)
+        console.error(err)
       }
-    }, 600) // ⏳ 600ms wait → no aggressive suggestions
-
+    }, 600)
+  
     return () => clearTimeout(timeout)
   }, [prompt])
+  
 
   return { suggestions, visible, setVisible }
 }
