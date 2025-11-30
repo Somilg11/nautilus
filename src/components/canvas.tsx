@@ -18,46 +18,12 @@ import NautilusNode from "@/components/nodes/NautilusNode"
 import "@/styles/canvas.css"
 import { computeExecutionPath } from "@/lib/flow-execution"
 
-const nodeTypes = { nautilusNode: NautilusNode }
+import DeletableEdge from "@/components/edges/deletable-edge"
 
-/* --------------------------------
-   MODULE-LEVEL EDGE DELETE BUTTON
---------------------------------- */
-function EdgeDeleteButton({ id, x, y }: any) {
-  return (
-    <foreignObject
-      x={x - 15}
-      y={y - 15}
-      width={30}
-      height={30}
-      requiredExtensions="http://www.w3.org/1999/xhtml"
-      xmlns="http://www.w3.org/1999/xhtml"
-    >
-      <div
-        style={{
-          width: "30px",
-          height: "30px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "white",
-          borderRadius: "50%",
-          border: "1px solid #ccc",
-          cursor: "pointer",
-        }}
-        onClick={(e) => {
-          e.stopPropagation()
-          window.dispatchEvent(
-            new CustomEvent("delete-edge", { detail: { id } })
-          )
-        }}
-      >
-        ❌
-      </div>
-    </foreignObject>
-  )
-}
+import GroupNode from "@/components/nodes/GroupNode"
 
+const nodeTypes = { nautilusNode: NautilusNode, groupNode: GroupNode }
+const edgeTypes = { deletableEdge: DeletableEdge }
 
 let CLIPBOARD: { nodes: any[]; edges: any[] } | null = null
 
@@ -132,33 +98,6 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
   }
 
   /* -----------------------------
-        EDGE CLICK (select + show delete)
-  ------------------------------ */
-  function onEdgeClick(event: any, edge: any) {
-    const { sourceX, sourceY, targetX, targetY } = edge
-
-    const midX = (sourceX + targetX) / 2
-    const midY = (sourceY + targetY) / 2
-
-    setEdges((prev) =>
-      prev.map((e) =>
-        e.id === edge.id
-          ? {
-            ...e,
-            selected: true,
-            data: {
-              ...e.data,
-              showDelete: true,
-              deleteX: midX,
-              deleteY: midY,
-            },
-          }
-          : { ...e, selected: false, data: { ...e.data, showDelete: false } }
-      )
-    )
-  }
-
-  /* -----------------------------
        APPLY NODE CHANGES
   ------------------------------ */
   const onNodesChange = (changes: NodeChange[]) => {
@@ -176,6 +115,11 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
         if (c.type === "select" && typeof c.selected === "boolean") {
           updated[index] = { ...updated[index], selected: c.selected }
         }
+
+        // Update dimensions if measured (important for alignment/grouping)
+        if (c.type === 'dimensions' && c.dimensions) {
+          updated[index] = { ...updated[index], width: c.dimensions.width, height: c.dimensions.height, measured: { ...c.dimensions } } as any
+        }
       }
       return updated
     })
@@ -189,6 +133,12 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
       let updated = [...prev]
       for (const c of changes) {
         if (c.type === "remove") updated = updated.filter((e) => e.id !== c.id)
+        if (c.type === "select" && typeof c.selected === "boolean") {
+          const index = updated.findIndex((e) => e.id === c.id)
+          if (index !== -1) {
+            updated[index] = { ...updated[index], selected: c.selected }
+          }
+        }
       }
       return updated
     })
@@ -204,6 +154,7 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
       target: params.target ?? "",
       sourceHandle: params.sourceHandle ?? undefined,
       targetHandle: params.targetHandle ?? undefined,
+      type: "deletableEdge",
       markerEnd: { type: MarkerType.Arrow },
     }
 
@@ -277,6 +228,7 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
       id: crypto.randomUUID(),
       source: mapOldToNew.get(e.source),
       target: mapOldToNew.get(e.target),
+      type: "deletableEdge",
     }))
 
     setNodes((prev) => prev.map((n) => ({ ...n, selected: false })).concat(pastedNodes))
@@ -288,31 +240,89 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
   ------------------------------ */
   function groupSelected() {
     const sel = getSelectedNodes()
-    if (sel.length === 0) return
+    if (sel.length < 2) return // Need at least 2 items to group, or 1 item to wrap? Let's say 1 is fine.
+
+    // Calculate bounding box
+    const minX = Math.min(...sel.map((n) => n.position.x))
+    const minY = Math.min(...sel.map((n) => n.position.y))
+    const maxX = Math.max(...sel.map((n) => n.position.x + ((n as any).measured?.width ?? n.width ?? 150)))
+    const maxY = Math.max(...sel.map((n) => n.position.y + ((n as any).measured?.height ?? n.height ?? 100)))
+
+    const padding = 20
     const groupId = crypto.randomUUID()
 
-    setNodes((prev) =>
-      prev.map((n) =>
-        (n as any).selected
-          ? { ...n, data: { ...n.data, group: groupId } }
-          : n
-      )
-    )
+    const groupNode = {
+      id: groupId,
+      type: 'groupNode',
+      position: { x: minX - padding, y: minY - padding },
+      style: {
+        width: maxX - minX + padding * 2,
+        height: maxY - minY + padding * 2,
+      },
+      data: { label: 'Group' },
+      selected: true,
+      zIndex: -1,
+    }
+
+    // Update children to be relative to group
+    const updatedChildren = sel.map((n) => ({
+      ...n,
+      parentNode: groupId,
+      extent: 'parent' as const,
+      position: {
+        x: n.position.x - (minX - padding),
+        y: n.position.y - (minY - padding),
+      },
+      selected: false,
+      draggable: true, // Ensure draggable
+    }))
+
+    setNodes((prev) => {
+      const otherNodes = prev.filter((n) => !sel.find((s) => s.id === n.id))
+      return [...otherNodes, groupNode, ...updatedChildren]
+    })
   }
 
   function ungroupSelected() {
-    setNodes((prev) =>
-      prev.map((n) =>
-        (n as any).selected && n.data?.group
-          ? { ...n, data: { ...n.data, group: undefined } }
-          : n
-      )
-    )
+    const sel = getSelectedNodes()
+    const groupsToDissolve = sel.filter(n => n.type === 'groupNode')
+
+    if (groupsToDissolve.length === 0) return
+
+    setNodes((prev) => {
+      let newNodes = [...prev]
+
+      groupsToDissolve.forEach(group => {
+        // Find children
+        const children = newNodes.filter(n => n.parentNode === group.id)
+
+        // Update children to be absolute
+        const updatedChildren = children.map(child => ({
+          ...child,
+          parentNode: undefined,
+          extent: undefined,
+          position: {
+            x: group.position.x + child.position.x,
+            y: group.position.y + child.position.y,
+          },
+        }))
+
+        // Remove group node and replace children
+        newNodes = newNodes.filter(n => n.id !== group.id && n.parentNode !== group.id)
+        newNodes.push(...updatedChildren)
+      })
+
+      return newNodes
+    })
   }
 
   /* -----------------------------
        ALIGN / DISTRIBUTE / NUDGE
   ------------------------------ */
+  function getWidth(n: any) {
+    return (n as any).measured?.width ?? n.width ?? 150
+  }
+
   function alignLeft() {
     const sel = getSelectedNodes()
     if (sel.length < 2) return
@@ -332,7 +342,7 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     if (sel.length < 2) return
 
     const centers = sel.map(
-      (s) => s.position.x + ((s.width ?? 150) / 2 || 75)
+      (s) => s.position.x + getWidth(s) / 2
     )
     const avgCenter = centers.reduce((a, b) => a + b, 0) / centers.length
 
@@ -343,7 +353,7 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
             ...n,
             position: {
               ...n.position,
-              x: avgCenter - ((n.width ?? 150) / 2 || 75),
+              x: avgCenter - getWidth(n) / 2,
             },
           }
           : n
@@ -356,7 +366,7 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     if (sel.length < 2) return
 
     const maxRight = Math.max(
-      ...sel.map((s) => s.position.x + ((s.width ?? 150) || 150))
+      ...sel.map((s) => s.position.x + getWidth(s))
     )
 
     setNodes((prev) =>
@@ -366,7 +376,7 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
             ...n,
             position: {
               ...n.position,
-              x: maxRight - ((n.width ?? 150) || 150),
+              x: maxRight - getWidth(n),
             },
           }
           : n
@@ -454,6 +464,21 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
   }, [nodes, edges])
 
   /* -----------------------------
+       ZOOM / FIT VIEW
+  ------------------------------ */
+  function zoomIn() {
+    reactFlowInstance?.zoomIn()
+  }
+
+  function zoomOut() {
+    reactFlowInstance?.zoomOut()
+  }
+
+  function fitView() {
+    reactFlowInstance?.fitView()
+  }
+
+  /* -----------------------------
       TOOLBAR EVENTS
   ------------------------------ */
   useEffect(() => {
@@ -467,13 +492,16 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
       ["nautilus-copy", copySelected],
       ["nautilus-paste", pasteClipboard],
       ["nautilus-delete", deleteSelected],
+      ["nautilus-zoom-in", zoomIn],
+      ["nautilus-zoom-out", zoomOut],
+      ["nautilus-fit-view", fitView],
     ]
 
     events.forEach(([ev, fn]) => window.addEventListener(ev, fn))
     return () => {
       events.forEach(([ev, fn]) => window.removeEventListener(ev, fn))
     }
-  }, [nodes, edges])
+  }, [nodes, edges, reactFlowInstance])
 
   /* -----------------------------
       EDGE DELETE BUTTON EVENT
@@ -570,11 +598,13 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
         nodes={nodes}
         edges={edges.map((e) => ({
           ...e,
+          type: "deletableEdge", // Force type for existing edges
           style: e.selected
             ? { stroke: "#ff4d4d", strokeWidth: 2 }
             : { stroke: "#999" },
         }))}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onInit={onInit}
         onDrop={onDrop}
         onDragOver={onDragOver}
@@ -583,20 +613,8 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onEdgeClick={onEdgeClick}  // <-- edge delete handler
         fitView
       >
-        {edges
-          .filter((e) => e.data?.showDelete)
-          .map((e) => (
-            <EdgeDeleteButton
-              key={e.id}
-              id={e.id}
-              x={e.data.deleteX}
-              y={e.data.deleteY}
-            />
-          ))}
-
         <Background gap={20} size={1} />
         <Controls />
       </ReactFlow>

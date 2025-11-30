@@ -3,24 +3,54 @@ type Edge = { source: string; target: string }
 
 export function computeExecutionPath(nodes: Node[], edges: Edge[]) {
   const incoming = new Map<string, number>()
-  nodes.forEach((n) => incoming.set(n.id, 0))
-  edges.forEach((e) => incoming.set(e.target, (incoming.get(e.target) || 0) + 1))
+  const adj = new Map<string, string[]>()
 
-  const startNodes = nodes.filter((n) => (incoming.get(n.id) || 0) === 0)
+  // Initialize
+  nodes.forEach((n) => {
+    incoming.set(n.id, 0)
+    adj.set(n.id, [])
+  })
 
-  const visited = new Set<string>()
+  // Build Graph
+  edges.forEach((e) => {
+    // Only consider edges where both source and target exist in the nodes list
+    if (incoming.has(e.target) && incoming.has(e.source)) {
+      incoming.set(e.target, (incoming.get(e.target) || 0) + 1)
+      adj.get(e.source)?.push(e.target)
+    }
+  })
+
+  // Queue for Kahn's Algorithm (nodes with 0 in-degree)
+  const queue: string[] = []
+  nodes.forEach((n) => {
+    if (incoming.get(n.id) === 0) {
+      queue.push(n.id)
+    }
+  })
+
   const order: string[] = []
 
-  function dfs(nodeId: string) {
-    if (visited.has(nodeId)) return
-    visited.add(nodeId)
-    order.push(nodeId)
+  while (queue.length > 0) {
+    const u = queue.shift()!
+    order.push(u)
 
-    const outEdges = edges.filter((e) => e.source === nodeId)
-    outEdges.forEach((e) => dfs(e.target))
+    const neighbors = adj.get(u) || []
+    for (const v of neighbors) {
+      const newIn = (incoming.get(v) || 0) - 1
+      incoming.set(v, newIn)
+      if (newIn === 0) {
+        queue.push(v)
+      }
+    }
   }
 
-  startNodes.forEach((n) => dfs(n.id))
+  // Handle cycles or remaining nodes (if graph has cycles, some nodes won't reach 0 in-degree)
+  if (order.length < nodes.length) {
+    const visited = new Set(order)
+    const remaining = nodes.filter((n) => !visited.has(n.id))
+    // Append remaining nodes. In a cycle, strict dependency order is impossible, so we just visit them.
+    remaining.forEach((n) => order.push(n.id))
+  }
 
   return order
 }

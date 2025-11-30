@@ -3,6 +3,14 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 import { FLOW_SCHEMA } from "./ai-schema"
 
 /* -------------------------------------------------------
+   Types
+------------------------------------------------------- */
+export type AIResponse =
+  | { type: "message"; content: string }
+  | { type: "diagram"; nodes: any[]; edges: any[]; message?: string }
+  | { nodes: any[]; edges: any[] }
+
+/* -------------------------------------------------------
    JSON Extractor
 ------------------------------------------------------- */
 function extractJSON(text: string): string | null {
@@ -55,35 +63,7 @@ RULES:
   /* -------------------------------------------------------
      GEMINI (SDK VERSION — NO URL) ✅
   ------------------------------------------------------- */
-  if (model === "gemini") {
-    if (!keys.gemini) throw new Error("Missing Gemini API key")
-
-    console.log("⚡ Using Gemini SDK")
-
-    const genAI = new GoogleGenerativeAI(keys.gemini)
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
-      generationConfig: {
-        temperature: 0,
-        responseMimeType: "application/json"
-      }
-    })
-
-    const result = await model.generateContent(combinedPrompt)
-    const rawText = result.response.text()
-    console.log("🔥 RAW GEMINI TEXT:", rawText)
-
-    const json = extractJSON(rawText) ?? rawText
-
-    try {
-      return JSON.parse(json)
-    } catch (err) {
-      console.error("❌ Gemini JSON Error:", err)
-      console.error("RAW:", rawText)
-      throw new Error("Invalid JSON from Gemini")
-    }
-  }
-
+  
   /* -------------------------------------------------------
      OPENAI
   ------------------------------------------------------- */
