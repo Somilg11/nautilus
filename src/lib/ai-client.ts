@@ -1,4 +1,3 @@
-// src/lib/ai-client.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { FLOW_SCHEMA } from "./ai-schema";
 
@@ -16,11 +15,9 @@ export type AIResponse =
 function extractJSON(text: string): string | null {
   if (!text) return null;
 
-  // First try ```json ``` blocks
   const block = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (block?.[1]) return block[1].trim();
 
-  // Fallback: find first { ... }
   const first = text.indexOf("{");
   if (first !== -1) {
     let depth = 0;
@@ -31,7 +28,6 @@ function extractJSON(text: string): string | null {
     }
   }
 
-  // Last fallback
   const lo = text.lastIndexOf("{");
   const lc = text.lastIndexOf("}");
   if (lo !== -1 && lc !== -1 && lc > lo) return text.slice(lo, lc + 1).trim();
@@ -47,6 +43,24 @@ export async function generateFlow(
   model: string,
   keys: Record<string, string>
 ) {
+  /* -------------------------------------------------------
+     GLOBAL KEY CHECKS (per model)
+  ------------------------------------------------------- */
+  if (model === "gemini" && !keys.gemini)
+    throw new Error("Gemini API Key is missing.");
+
+  if (model === "openai" && !keys.openai)
+    throw new Error("OpenAI API Key is missing.");
+
+  if (model === "claude" && !keys.claude)
+    throw new Error("Claude API Key is missing.");
+
+  if (model === "groq" && !keys.groq)
+    throw new Error("Groq API Key is missing.");
+
+  /* -------------------------------------------------------
+     BUILD FINAL PROMPT
+  ------------------------------------------------------- */
   const combinedPrompt = `
 You are an AI system architect.
 
@@ -59,21 +73,19 @@ ${FLOW_SCHEMA}
 RULES:
 - Return ONLY JSON.
 - JSON MUST include: { "nodes": [], "edges": [] }
-- NO extra text.
-- If model adds explanation → wrap JSON inside \`\`\`json\`\`\`.
+- NO explanation.
+- NO markdown.
+If your model adds explanation, wrap JSON inside \`\`\`json\`\`\`.
 `;
 
   /* -------------------------------------------------------
-     GEMINI SUPPORT (NEW) ✅
+     GEMINI
   ------------------------------------------------------- */
   if (model === "gemini") {
     try {
       console.log("⚡ GEMINI REQUEST");
 
-      const apiKey = keys.gemini;
-      if (!apiKey) throw new Error("❌ Missing Gemini API Key");
-
-      const genAI = new GoogleGenerativeAI(apiKey);
+      const genAI = new GoogleGenerativeAI(keys.gemini);
 
       const response = await genAI
         .getGenerativeModel({
@@ -92,6 +104,7 @@ RULES:
         });
 
       let raw = "";
+
       try {
         raw = response.response.text();
       } catch {
@@ -99,11 +112,11 @@ RULES:
       }
 
       const json = extractJSON(raw) ?? raw;
-
       return JSON.parse(json);
+
     } catch (err: any) {
       console.error("❌ GEMINI ERROR:", err);
-      throw new Error(`Gemini parsing failed: ${err.message}`);
+      throw new Error(`Gemini failed to produce valid JSON: ${err.message}`);
     }
   }
 
@@ -132,9 +145,10 @@ RULES:
 
       const json = extractJSON(txt) ?? txt;
       return JSON.parse(json);
+
     } catch (err: any) {
-      console.error("❌ OPENAI PARSE ERROR:", err);
-      throw new Error(`OpenAI JSON failed: ${err.message}`);
+      console.error("❌ OPENAI ERROR:", err);
+      throw new Error(`OpenAI failed to produce valid JSON: ${err.message}`);
     }
   }
 
@@ -159,18 +173,53 @@ RULES:
       });
 
       const raw = await res.json();
-      const txt = raw?.content?.[0]?.text ?? raw?.completion ?? "";
+      const txt =
+        raw?.content?.[0]?.text ??
+        raw?.completion ??
+        "";
 
       const json = extractJSON(txt) ?? txt;
       return JSON.parse(json);
+
     } catch (err: any) {
       console.error("❌ CLAUDE ERROR:", err);
-      throw new Error(`Claude JSON failed: ${err.message}`);
+      throw new Error(`Claude failed to produce valid JSON: ${err.message}`);
+    }
+  }
+
+  /* -------------------------------------------------------
+     GROQ (optional)
+  ------------------------------------------------------- */
+  if (model === "groq") {
+    try {
+      console.log("⚡ GROQ REQUEST");
+
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${keys.groq}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "mixtral-8x7b-32768",
+          messages: [{ role: "user", content: combinedPrompt }],
+        }),
+      });
+
+      const raw = await res.json();
+      const txt = raw?.choices?.[0]?.message?.content ?? "";
+
+      const json = extractJSON(txt) ?? txt;
+      return JSON.parse(json);
+
+    } catch (err: any) {
+      console.error("❌ GROQ ERROR:", err);
+      throw new Error(`Groq failed to produce valid JSON: ${err.message}`);
     }
   }
 
   /* -------------------------------------------------------
      UNSUPPORTED MODEL
   ------------------------------------------------------- */
-  throw new Error("Unsupported model");
+  throw new Error("Unsupported AI model selected.");
 }
