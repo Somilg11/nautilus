@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -10,17 +10,21 @@ import {
   Play,
   Sparkles,
   Share2,
-  RotateCcw,
-  RotateCw,
+  Undo2,
+  Redo2,
   Camera,
   LayoutGrid,
+  Square,
+  Gauge,
+  PanelLeft,
+  Check,
+  Loader2,
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { ModeToggle } from "./mode-toggle"
-import { RiHomeFill } from "react-icons/ri"
 import Link from "next/link"
-import { TbLayoutSidebarFilled } from "react-icons/tb"
 
 import LZString from "lz-string"
 import * as htmlToImage from "html-to-image"
@@ -33,7 +37,50 @@ import {
 } from "@/components/ui/tooltip"
 
 import { useFlow } from "@/lib/flow-context"
+import NautilusMark from "@/components/nautilus-mark"
 import TemplateDialog from "./template-dialog"
+
+/** Icon button with a mandatory label — every control stays reachable. */
+function ToolButton({
+  label,
+  hint,
+  onClick,
+  disabled,
+  children,
+  active,
+}: {
+  label: string
+  hint?: string
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+  active?: boolean
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="icon"
+          variant={active ? "secondary" : "ghost"}
+          onClick={onClick}
+          disabled={disabled}
+          aria-label={label}
+          className="h-8 w-8"
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent className="flex items-center gap-2">
+        <span>{label}</span>
+        {hint && (
+          <kbd className="rounded border border-border/50 bg-background/20 px-1 font-mono text-[10px]">
+            {hint}
+          </kbd>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 
 export default function Toolbar({
   onToggleRightSidebar,
@@ -57,11 +104,12 @@ export default function Toolbar({
   } = useFlow()
 
   const [tplOpen, setTplOpen] = useState(false)
+  const [running, setRunning] = useState(false)
+  const [loadOn, setLoadOn] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  /* -----------------------------
-     EXPORT JSON
-  ----------------------------- */
+  /* ----------------------------- EXPORT JSON ----------------------------- */
   function handleExport() {
     try {
       const safeName = projectName
@@ -85,9 +133,7 @@ export default function Toolbar({
     }
   }
 
-  /* -----------------------------
-     IMPORT JSON
-  ----------------------------- */
+  /* ----------------------------- IMPORT JSON ----------------------------- */
   function handleImportClick() {
     fileInputRef.current?.click()
   }
@@ -102,7 +148,7 @@ export default function Toolbar({
         const parsed = JSON.parse(event.target?.result as string)
 
         if (!parsed.nodes || !parsed.edges) {
-          toast.error("Invalid JSON: missing nodes/edges")
+          toast.error("Invalid file: missing nodes or edges")
           return
         }
 
@@ -112,48 +158,59 @@ export default function Toolbar({
           })
         )
 
-        toast.success("Imported successfully")
+        toast.success(`Imported ${parsed.nodes.length} components`)
       } catch {
-        toast.error("Invalid JSON")
+        toast.error("That file isn't valid JSON")
+      } finally {
+        // Allow importing the same file twice in a row.
+        e.target.value = ""
       }
     }
 
     reader.readAsText(file)
   }
 
-  /* -----------------------------
-     SHARE LINK
-  ----------------------------- */
-  function handleShare() {
+  /* ------------------------------- SHARE -------------------------------- */
+  async function handleShare() {
     try {
       const payload = JSON.stringify({ name: projectName, nodes, edges })
       const compressed = LZString.compressToEncodedURIComponent(payload)
-
       const url = `${window.location.origin}/dashboard?d=${compressed}`
-      navigator.clipboard.writeText(url)
 
-      toast("Share link copied")
+      await navigator.clipboard.writeText(url)
+
+      if (url.length > 8000) {
+        toast.warning("Link copied, but it's very long — export JSON for big diagrams")
+      } else {
+        toast.success("Share link copied to clipboard")
+      }
     } catch {
-      toast.error("Share failed")
+      toast.error("Could not copy the share link")
     }
   }
 
-  /* -----------------------------
-     RUN FLOW
-  ----------------------------- */
+  /* -------------------------------- RUN --------------------------------- */
+  useEffect(() => {
+    function onState(e: Event) {
+      const detail = (e as CustomEvent).detail ?? {}
+      setRunning(detail.status === "running" || detail.status === "paused")
+      setLoadOn(Boolean(detail.load))
+    }
+    window.addEventListener("nautilus-run-state", onState)
+    return () => window.removeEventListener("nautilus-run-state", onState)
+  }, [])
+
   function handleRun() {
-    window.dispatchEvent(new Event("nautilus-run"))
-    toast("Running flow…")
+    window.dispatchEvent(new Event(running ? "nautilus-run-stop" : "nautilus-run"))
   }
 
-  /* -----------------------------
-     CANVAS → PNG
-  ----------------------------- */
+  /* ----------------------------- CANVAS → PNG ---------------------------- */
   async function handleScreenshot() {
-    try {
-      const flow = document.querySelector(".react-flow") as HTMLElement
-      if (!flow) return toast.error("Canvas not found")
+    const flow = document.querySelector(".react-flow") as HTMLElement
+    if (!flow) return toast.error("Canvas not found")
 
+    setExporting(true)
+    try {
       const url = await htmlToImage.toPng(flow, {
         backgroundColor: "white",
         pixelRatio: 2,
@@ -168,76 +225,57 @@ export default function Toolbar({
       toast.success("PNG exported")
     } catch {
       toast.error("Failed to export PNG")
+    } finally {
+      setExporting(false)
     }
   }
 
-  /* -----------------------------
-     RENDER
-  ----------------------------- */
+  /* -------------------------------- RENDER ------------------------------- */
   return (
-    <div className="h-16 border-b flex items-center justify-between px-6 bg-background">
+    <header className="flex h-12 items-center gap-2 border-b bg-background px-3">
+      {/* LEFT */}
+      <div className="flex min-w-0 items-center gap-1.5">
+        <ToolButton label="Toggle component panel" hint="[" onClick={onToggleLeftSidebar}>
+          <PanelLeft className="h-4 w-4" />
+        </ToolButton>
 
-      {/* LEFT SIDE */}
-      <div className="flex items-center gap-3">
-
-        {/* Toggle Sidebar */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" onClick={onToggleLeftSidebar}>
-              <TbLayoutSidebarFilled className="h-6 w-6" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Toggle Sidebar</TooltipContent>
-        </Tooltip>
-
-        {/* Home */}
-        <Link href="/" className="hover:opacity-80">
-          <RiHomeFill className="h-4 w-4 text-primary" />
+        <Link href="/" aria-label="Nautilus home" className="shrink-0 transition-opacity hover:opacity-80">
+          <NautilusMark className="h-6 w-6" />
         </Link>
 
-        <Separator orientation="vertical" className="h-6" />
-
-        {/* Project Name */}
         <Input
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
-          className="w-56"
-          placeholder="Project Name"
+          onKeyDown={(e) => e.stopPropagation()}
+          aria-label="Project name"
+          placeholder="Untitled design"
+          className="h-8 w-52 border-transparent bg-transparent px-2 text-[13px] font-medium shadow-none hover:border-border focus-visible:border-border"
         />
+
+        <Badge variant={isSaved ? "success" : "warning"} className="gap-1.5">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              isSaved ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
+            }`}
+          />
+          {isSaved ? "Saved" : "Saving…"}
+        </Badge>
       </div>
 
-      {/* RIGHT SIDE */}
-      <div className="flex items-center gap-2">
+      {/* RIGHT */}
+      <div className="ml-auto flex items-center gap-1">
+        <ToolButton label="Undo" hint="⌘Z" onClick={undo} disabled={!canUndo}>
+          <Undo2 className="h-4 w-4" />
+        </ToolButton>
+        <ToolButton label="Redo" hint="⌘⇧Z" onClick={redo} disabled={!canRedo}>
+          <Redo2 className="h-4 w-4" />
+        </ToolButton>
 
-        {/* Undo */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" disabled={!canUndo} onClick={() => undo()}>
-              <RotateCcw className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Undo</TooltipContent>
-        </Tooltip>
+        <Separator orientation="vertical" className="mx-1 h-5" />
 
-        {/* Redo */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" disabled={!canRedo} onClick={() => redo()}>
-              <RotateCw className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Redo</TooltipContent>
-        </Tooltip>
-
-        {/* Templates */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" onClick={() => setTplOpen(true)}>
-              <LayoutGrid className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Templates</TooltipContent>
-        </Tooltip>
+        <ToolButton label="Templates" onClick={() => setTplOpen(true)}>
+          <LayoutGrid className="h-4 w-4" />
+        </ToolButton>
 
         <TemplateDialog
           open={tplOpen}
@@ -245,15 +283,9 @@ export default function Toolbar({
           onSelect={(tpl) => onInsertTemplate(tpl)}
         />
 
-        {/* Import */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" onClick={handleImportClick}>
-              <Upload className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Import JSON</TooltipContent>
-        </Tooltip>
+        <ToolButton label="Import JSON" onClick={handleImportClick}>
+          <Upload className="h-4 w-4" />
+        </ToolButton>
 
         <input
           ref={fileInputRef}
@@ -261,71 +293,64 @@ export default function Toolbar({
           accept="application/json"
           className="hidden"
           onChange={handleImport}
+          aria-hidden="true"
+          tabIndex={-1}
         />
 
-        {/* Export */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" onClick={handleExport}>
-              <Download className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Export JSON</TooltipContent>
-        </Tooltip>
+        <ToolButton label="Export JSON" onClick={handleExport}>
+          <Download className="h-4 w-4" />
+        </ToolButton>
 
-        {/* Share */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" onClick={handleShare}>
-              <Share2 className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Share</TooltipContent>
-        </Tooltip>
+        <ToolButton label="Export PNG" onClick={handleScreenshot} disabled={exporting}>
+          {exporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Camera className="h-4 w-4" />
+          )}
+        </ToolButton>
 
-        {/* Screenshot */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" onClick={handleScreenshot}>
-              <Camera className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Export PNG</TooltipContent>
-        </Tooltip>
+        <ToolButton label="Copy share link" onClick={handleShare}>
+          <Share2 className="h-4 w-4" />
+        </ToolButton>
 
-        {/* Run */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" onClick={handleRun}>
-              <Play className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Run Flow</TooltipContent>
-        </Tooltip>
+        <Separator orientation="vertical" className="mx-1 h-5" />
 
-        {/* Save Indicator */}
-        <div className="flex items-center px-1">
-          <div
-            className={`h-2 w-2 rounded-full ${
-              isSaved ? "bg-emerald-500" : "bg-rose-500 animate-pulse"
-            }`}
-            title={isSaved ? "Saved" : "Unsaved changes"}
-          />
-        </div>
+        <Button
+          size="sm"
+          variant={running ? "destructive" : "default"}
+          onClick={handleRun}
+          className="h-8 gap-1.5 px-3 text-[13px]"
+        >
+          {running ? (
+            <>
+              <Square className="h-3.5 w-3.5" /> Stop
+            </>
+          ) : (
+            <>
+              <Play className="h-3.5 w-3.5" /> Run
+            </>
+          )}
+        </Button>
 
-        {/* AI */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="icon" variant="ghost" onClick={onToggleRightSidebar}>
-              <Sparkles className="h-5 w-5 text-primary" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>AI Assistant</TooltipContent>
-        </Tooltip>
+        <ToolButton
+          label="Load playground"
+          onClick={() => window.dispatchEvent(new Event("nautilus-load-toggle"))}
+          active={loadOn}
+        >
+          <Gauge className="h-4 w-4" />
+        </ToolButton>
 
-        {/* Theme */}
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={onToggleRightSidebar}
+          className="h-8 gap-1.5 px-3 text-[13px]"
+        >
+          <Sparkles className="h-3.5 w-3.5 text-primary" /> Assistant
+        </Button>
+
         <ModeToggle />
       </div>
-    </div>
+    </header>
   )
 }

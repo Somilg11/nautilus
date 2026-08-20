@@ -1,4 +1,4 @@
-import { MarkerType } from "react-flow-renderer"
+import { MarkerType } from "reactflow"
 
 export const ZomatoTemplate = {
     id: "zomato",
@@ -10,19 +10,34 @@ export const ZomatoTemplate = {
             id: "customer-app",
             type: "nautilusNode",
             position: { x: 100, y: 0 },
-            data: { label: "Customer App", icon: "client_mobile", color: "red" },
+            data: {
+                label: "Customer App",
+                icon: "client_mobile",
+                color: "red",
+                sim: { latencyMs: 5 },
+            },
         },
         {
             id: "restaurant-app",
             type: "nautilusNode",
             position: { x: 300, y: 0 },
-            data: { label: "Restaurant App", icon: "client_web", color: "red" },
+            data: {
+                label: "Restaurant App",
+                icon: "client_web",
+                color: "red",
+                sim: { latencyMs: 5 },
+            },
         },
         {
             id: "driver-app",
             type: "nautilusNode",
             position: { x: 500, y: 0 },
-            data: { label: "Driver App", icon: "client_mobile", color: "red" },
+            data: {
+                label: "Driver App",
+                icon: "client_mobile",
+                color: "red",
+                sim: { latencyMs: 5 },
+            },
         },
 
         // Entry
@@ -30,13 +45,23 @@ export const ZomatoTemplate = {
             id: "lb",
             type: "nautilusNode",
             position: { x: 300, y: 150 },
-            data: { label: "Load Balancer", icon: "load_balancer", color: "blue" },
+            data: {
+                label: "Load Balancer",
+                icon: "load_balancer",
+                color: "blue",
+                sim: { capacity: 50000, replicas: 2, latencyMs: 2 },
+            },
         },
         {
             id: "api-gateway",
             type: "nautilusNode",
             position: { x: 300, y: 250 },
-            data: { label: "API Gateway", icon: "api_server", color: "purple" },
+            data: {
+                label: "API Gateway",
+                icon: "api_server",
+                color: "purple",
+                sim: { capacity: 20000, replicas: 6, latencyMs: 8, errorRate: 0.001 },
+            },
         },
 
         // Services
@@ -44,25 +69,45 @@ export const ZomatoTemplate = {
             id: "restaurant-service",
             type: "nautilusNode",
             position: { x: 100, y: 400 },
-            data: { label: "Restaurant Service", icon: "microservice", color: "green" },
+            data: {
+                label: "Restaurant Service",
+                icon: "microservice",
+                color: "green",
+                sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+            },
         },
         {
             id: "order-service",
             type: "nautilusNode",
             position: { x: 300, y: 400 },
-            data: { label: "Order Service", icon: "microservice", color: "green" },
+            data: {
+                label: "Order Service",
+                icon: "microservice",
+                color: "green",
+                sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+            },
         },
         {
             id: "delivery-service",
             type: "nautilusNode",
             position: { x: 500, y: 400 },
-            data: { label: "Delivery Service", icon: "microservice", color: "green" },
+            data: {
+                label: "Delivery Service",
+                icon: "microservice",
+                color: "green",
+                sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+            },
         },
         {
             id: "search-service",
             type: "nautilusNode",
             position: { x: 700, y: 400 },
-            data: { label: "Search Service", icon: "microservice", color: "yellow" },
+            data: {
+                label: "Search Service",
+                icon: "microservice",
+                color: "yellow",
+                sim: { capacity: 8000, replicas: 8, latencyMs: 30, errorRate: 0.002 },
+            },
         },
 
         // Data
@@ -70,19 +115,34 @@ export const ZomatoTemplate = {
             id: "restaurant-db",
             type: "nautilusNode",
             position: { x: 100, y: 550 },
-            data: { label: "Restaurant DB", icon: "postgres", color: "blue" },
+            data: {
+                label: "Restaurant DB",
+                icon: "postgres",
+                color: "blue",
+                sim: { capacity: 6000, replicas: 3, latencyMs: 12, errorRate: 0.0005 },
+            },
         },
         {
             id: "order-db",
             type: "nautilusNode",
             position: { x: 300, y: 550 },
-            data: { label: "Order DB", icon: "postgres", color: "blue" },
+            data: {
+                label: "Order DB",
+                icon: "postgres",
+                color: "blue",
+                sim: { capacity: 6000, replicas: 3, latencyMs: 12, errorRate: 0.0005 },
+            },
         },
         {
             id: "elasticsearch",
             type: "nautilusNode",
             position: { x: 700, y: 550 },
-            data: { label: "Elasticsearch", icon: "elastic", color: "yellow" },
+            data: {
+                label: "Elasticsearch",
+                icon: "elastic",
+                color: "yellow",
+                sim: { capacity: 8000, replicas: 3, latencyMs: 30 },
+            },
         },
 
         // Async / Realtime
@@ -90,13 +150,23 @@ export const ZomatoTemplate = {
             id: "kafka",
             type: "nautilusNode",
             position: { x: 300, y: 700 },
-            data: { label: "Kafka (Events)", icon: "kafka", color: "orange" },
+            data: {
+                label: "Kafka (Events)",
+                icon: "kafka",
+                color: "orange",
+                sim: { capacity: 100000, replicas: 3, latencyMs: 3 },
+            },
         },
         {
             id: "location-tracking",
             type: "nautilusNode",
             position: { x: 500, y: 700 },
-            data: { label: "Location Tracking", icon: "redis", color: "red" },
+            data: {
+                label: "Location Tracking",
+                icon: "redis",
+                color: "red",
+                sim: { capacity: 120000, replicas: 3, latencyMs: 1 },
+            },
         },
     ],
     edges: [

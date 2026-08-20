@@ -1,4 +1,4 @@
-import { MarkerType } from "react-flow-renderer"
+import { MarkerType } from "reactflow"
 
 export const InstagramTemplate = {
   id: "instagram",
@@ -10,7 +10,12 @@ export const InstagramTemplate = {
       id: "mobile-app",
       type: "nautilusNode",
       position: { x: 300, y: 0 },
-      data: { label: "Mobile App", icon: "client_mobile", color: "pink" },
+      data: {
+        label: "Mobile App",
+        icon: "client_mobile",
+        color: "pink",
+        sim: { latencyMs: 5 },
+      },
     },
 
     // Edge
@@ -18,13 +23,23 @@ export const InstagramTemplate = {
       id: "cdn",
       type: "nautilusNode",
       position: { x: 500, y: 100 },
-      data: { label: "CDN (Cloudfront)", icon: "cdn", color: "orange" },
+      data: {
+        label: "CDN (Cloudfront)",
+        icon: "cdn",
+        color: "orange",
+        sim: { capacity: 250000, replicas: 4, latencyMs: 15, errorRate: 0.0002 },
+      },
     },
     {
       id: "lb",
       type: "nautilusNode",
       position: { x: 300, y: 150 },
-      data: { label: "Load Balancer", icon: "load_balancer", color: "green" },
+      data: {
+        label: "Load Balancer",
+        icon: "load_balancer",
+        color: "green",
+        sim: { capacity: 50000, replicas: 4, latencyMs: 2 },
+      },
     },
 
     // App Layer
@@ -32,13 +47,23 @@ export const InstagramTemplate = {
       id: "app-server-1",
       type: "nautilusNode",
       position: { x: 150, y: 300 },
-      data: { label: "App Server (Django)", icon: "web_server", color: "blue" },
+      data: {
+        label: "App Server (Django)",
+        icon: "web_server",
+        color: "blue",
+        sim: { capacity: 8000, replicas: 20, latencyMs: 15 },
+      },
     },
     {
       id: "app-server-2",
       type: "nautilusNode",
       position: { x: 450, y: 300 },
-      data: { label: "App Server (Django)", icon: "web_server", color: "blue" },
+      data: {
+        label: "App Server (Django)",
+        icon: "web_server",
+        color: "blue",
+        sim: { capacity: 8000, replicas: 20, latencyMs: 15 },
+      },
     },
 
     // Services
@@ -46,7 +71,12 @@ export const InstagramTemplate = {
       id: "feed-service",
       type: "nautilusNode",
       position: { x: 650, y: 300 },
-      data: { label: "Feed Service", icon: "microservice", color: "purple" },
+      data: {
+        label: "Feed Service",
+        icon: "microservice",
+        color: "purple",
+        sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+      },
     },
 
     // Data Layer
@@ -54,19 +84,34 @@ export const InstagramTemplate = {
       id: "user-db",
       type: "nautilusNode",
       position: { x: 150, y: 450 },
-      data: { label: "User DB (Postgres)", icon: "postgres", color: "blue" },
+      data: {
+        label: "User DB (Postgres)",
+        icon: "postgres",
+        color: "blue",
+        sim: { capacity: 6000, replicas: 8, latencyMs: 12, errorRate: 0.0005 },
+      },
     },
     {
       id: "media-storage",
       type: "nautilusNode",
       position: { x: 500, y: 550 },
-      data: { label: "Object Storage (S3)", icon: "s3", color: "orange" },
+      data: {
+        label: "Object Storage (S3)",
+        icon: "s3",
+        color: "orange",
+        sim: { capacity: 15000, replicas: 4, latencyMs: 45 },
+      },
     },
     {
       id: "feed-cache",
       type: "nautilusNode",
       position: { x: 650, y: 450 },
-      data: { label: "Feed Cache (Redis)", icon: "redis", color: "red" },
+      data: {
+        label: "Feed Cache (Redis)",
+        icon: "redis",
+        color: "red",
+        sim: { capacity: 120000, replicas: 8, latencyMs: 1 },
+      },
     },
 
     // Async
@@ -74,13 +119,23 @@ export const InstagramTemplate = {
       id: "task-queue",
       type: "nautilusNode",
       position: { x: 300, y: 650 },
-      data: { label: "Task Queue (RabbitMQ)", icon: "rabbitmq", color: "orange" },
+      data: {
+        label: "Task Queue (RabbitMQ)",
+        icon: "rabbitmq",
+        color: "orange",
+        sim: { capacity: 25000, replicas: 9, latencyMs: 5 },
+      },
     },
     {
       id: "image-processor",
       type: "nautilusNode",
       position: { x: 300, y: 750 },
-      data: { label: "Image Processor (Celery)", icon: "microservice", color: "yellow" },
+      data: {
+        label: "Image Processor (Celery)",
+        icon: "microservice",
+        color: "yellow",
+        sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+      },
     },
   ],
   edges: [

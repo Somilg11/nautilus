@@ -1,181 +1,157 @@
 "use client"
 
+import {
+  Copy,
+  ClipboardPaste,
+  CopyPlus,
+  Trash2,
+  Group,
+  Ungroup,
+  AlignStartVertical,
+  AlignCenterVertical,
+  AlignEndVertical,
+  AlignHorizontalSpaceAround,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+} from "lucide-react"
+
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useFlow } from "@/lib/flow-context"
 
-import {
-  FaCopy,
-  FaPaste,
-  FaTrash,
-  FaObjectGroup,
-  FaObjectUngroup,
-} from "react-icons/fa"
-
-import {
-  LuMove,
-  LuZoomIn,
-  LuZoomOut,
-  LuScanLine,
-  LuAlignVerticalJustifyCenter,
-  LuAlignVerticalJustifyStart,
-  LuAlignVerticalJustifyEnd,
-  LuColumns2,
-} from "react-icons/lu"
-
+/**
+ * Canvas editing bar.
+ *
+ * Every button dispatches a `nautilus-*` window event handled in
+ * components/canvas.tsx — the canvas is the single owner of these actions.
+ */
 export default function EditingTools() {
-  const dispatch = (event: string) =>
-    window.dispatchEvent(new CustomEvent(event))
+  const { nodes } = useFlow()
+
+  const selected = nodes.filter((n) => (n as { selected?: boolean }).selected)
+  const selectedCount = selected.length
+  // Naming the single selected node is more useful than a bare count.
+  const selectionLabel =
+    selectedCount === 1
+      ? (selected[0].data?.label as string | undefined) || selected[0].id
+      : null
+  const hasSelection = selectedCount > 0
+  const canGroup = selectedCount > 1
+  const canDistribute = selectedCount > 2
+
+  const dispatch = (event: string) => window.dispatchEvent(new CustomEvent(event))
+
+  const groups: {
+    key: string
+    items: {
+      event: string
+      label: string
+      hint?: string
+      icon: React.ReactNode
+      disabled?: boolean
+      destructive?: boolean
+    }[]
+  }[] = [
+    {
+      key: "clipboard",
+      items: [
+        { event: "nautilus-copy", label: "Copy", hint: "⌘C", icon: <Copy />, disabled: !hasSelection },
+        { event: "nautilus-paste", label: "Paste", hint: "⌘V", icon: <ClipboardPaste /> },
+        { event: "nautilus-duplicate", label: "Duplicate", icon: <CopyPlus />, disabled: !hasSelection },
+        {
+          event: "nautilus-delete",
+          label: "Delete",
+          hint: "⌫",
+          icon: <Trash2 />,
+          disabled: !hasSelection,
+          destructive: true,
+        },
+      ],
+    },
+    {
+      key: "grouping",
+      items: [
+        { event: "nautilus-group", label: "Group", hint: "⌘G", icon: <Group />, disabled: !canGroup },
+        { event: "nautilus-ungroup", label: "Ungroup", hint: "⌘⇧G", icon: <Ungroup />, disabled: !hasSelection },
+      ],
+    },
+    {
+      key: "align",
+      items: [
+        { event: "nautilus-align-left", label: "Align left", icon: <AlignStartVertical />, disabled: !canGroup },
+        { event: "nautilus-align-center", label: "Align centre", icon: <AlignCenterVertical />, disabled: !canGroup },
+        { event: "nautilus-align-right", label: "Align right", icon: <AlignEndVertical />, disabled: !canGroup },
+        {
+          event: "nautilus-distribute-h",
+          label: "Distribute horizontally",
+          icon: <AlignHorizontalSpaceAround />,
+          disabled: !canDistribute,
+        },
+      ],
+    },
+    {
+      key: "view",
+      items: [
+        { event: "nautilus-zoom-in", label: "Zoom in", icon: <ZoomIn /> },
+        { event: "nautilus-zoom-out", label: "Zoom out", icon: <ZoomOut /> },
+        { event: "nautilus-fit-view", label: "Fit to screen", icon: <Maximize /> },
+      ],
+    },
+  ]
 
   return (
-    <div className="w-full border-b bg-muted/40 h-12 flex items-center px-4 gap-2">
+    <div className="flex h-10 items-center gap-1 border-b bg-muted/30 px-3">
+      {groups.map((group, gi) => (
+        <div key={group.key} className="flex items-center gap-0.5">
+          {gi > 0 && <div className="mx-1.5 h-4 w-px bg-border" />}
+          {group.items.map((item) => (
+            <Tooltip key={item.event}>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={item.label}
+                  disabled={item.disabled}
+                  onClick={() => dispatch(item.event)}
+                  className={`h-7 w-7 [&_svg]:h-3.5 [&_svg]:w-3.5 ${
+                    item.destructive ? "text-destructive hover:text-destructive" : ""
+                  }`}
+                >
+                  {item.icon}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="flex items-center gap-2">
+                <span>{item.label}</span>
+                {item.hint && (
+                  <kbd className="rounded border border-border/50 bg-background/20 px-1 font-mono text-[10px]">
+                    {item.hint}
+                  </kbd>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      ))}
 
-      {/* ============================= */}
-      {/* COPY / PASTE / DUPLICATE / DELETE */}
-      {/* ============================= */}
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-copy")}>
-            <FaCopy className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Copy</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-paste")}>
-            <FaPaste className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Paste</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-duplicate")}>
-            <LuMove className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Duplicate</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-delete")}>
-            <FaTrash className="h-4 w-4 text-red-500" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Delete</TooltipContent>
-      </Tooltip>
-
-      <div className="h-6 w-px bg-border mx-2" />
-
-      {/* ============================= */}
-      {/* GROUP / UNGROUP */}
-      {/* ============================= */}
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-group")}>
-            <FaObjectGroup className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Group</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-ungroup")}>
-            <FaObjectUngroup className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Ungroup</TooltipContent>
-      </Tooltip>
-
-      <div className="h-6 w-px bg-border mx-2" />
-
-      {/* ============================= */}
-      {/* ALIGNMENT TOOLS */}
-      {/* ============================= */}
-
-      {/* Align Left */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-align-left")}>
-            <LuAlignVerticalJustifyStart className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Align Left</TooltipContent>
-      </Tooltip>
-
-      {/* Align Center */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-align-center")}>
-            <LuAlignVerticalJustifyCenter className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Align Center</TooltipContent>
-      </Tooltip>
-
-      {/* Align Right */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-align-right")}>
-            <LuAlignVerticalJustifyEnd className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Align Right</TooltipContent>
-      </Tooltip>
-
-      {/* Distribute Horizontally */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-distribute-h")}>
-            <LuColumns2 className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Distribute Horizontally</TooltipContent>
-      </Tooltip>
-
-      <div className="h-6 w-px bg-border mx-2" />
-
-      {/* ============================= */}
-      {/* ZOOM / FIT VIEW */}
-      {/* ============================= */}
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-zoom-in")}>
-            <LuZoomIn className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Zoom In</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-zoom-out")}>
-            <LuZoomOut className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Zoom Out</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button size="icon" variant="ghost" onClick={() => dispatch("nautilus-fit-view")}>
-            <LuScanLine className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Fit View</TooltipContent>
-      </Tooltip>
-
+      <div className="ml-auto flex items-center gap-1.5">
+        {selectionLabel ? (
+          <Badge variant="secondary" className="max-w-[220px]">
+            <span className="truncate">{selectionLabel}</span>
+          </Badge>
+        ) : selectedCount > 0 ? (
+          <Badge variant="secondary">{selectedCount} selected</Badge>
+        ) : (
+          <Badge variant="outline">
+            {nodes.length} component{nodes.length === 1 ? "" : "s"}
+          </Badge>
+        )}
+      </div>
     </div>
   )
 }

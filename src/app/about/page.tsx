@@ -1,281 +1,339 @@
-"use client";
+import Link from "next/link"
+import type { Metadata } from "next"
+import { Button } from "@/components/ui/button"
+import NautilusMark from "@/components/nautilus-mark"
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Boxes,
+  GitPullRequest,
+  KeyRound,
+  Play,
+  Shield,
+  Sparkles,
+} from "lucide-react"
 
-import React from "react";
-import Link from "next/link";
-import { FaGithub, FaBolt, FaEdit, FaLayerGroup, FaShareAlt, FaCode, FaHeart, FaRobot } from "react-icons/fa";
-import { GiNautilusShell } from "react-icons/gi";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles } from "lucide-react";
+export const metadata: Metadata = {
+  title: "About — Nautilus",
+  description:
+    "Why Nautilus exists: an open-source, browser-only canvas for system design and load simulation — no accounts, no backend, no lock-in.",
+}
+
+const PRINCIPLES = [
+  {
+    icon: <Shield className="h-4 w-4" />,
+    title: "Your data stays yours",
+    body: "No accounts, no servers, no telemetry. Diagrams live in your browser and in files you export. The app makes no network calls of its own.",
+  },
+  {
+    icon: <KeyRound className="h-4 w-4" />,
+    title: "Bring your own key",
+    body: "AI is optional and uses a key you supply, sent straight to the provider. That is how the tool stays genuinely free instead of metered.",
+  },
+  {
+    icon: <Boxes className="h-4 w-4" />,
+    title: "Plain, portable format",
+    body: "Every diagram is JSON you can diff, commit, script or import elsewhere. There is nothing to migrate away from.",
+  },
+  {
+    icon: <Play className="h-4 w-4" />,
+    title: "Diagrams you can run",
+    body: "The canvas holds a real dependency graph, so it can be traced step by step — and loaded with traffic until something gives out.",
+  },
+]
+
+const INSIDE = [
+  {
+    label: "Component library",
+    body: "Hundreds of cloud, database, messaging, auth and DevOps icons, searchable and draggable.",
+  },
+  {
+    label: "Templates",
+    body: "Netflix, Uber, WhatsApp, Instagram, YouTube, Spotify, Zomato, three-tier and microservices.",
+  },
+  {
+    label: "Trace simulation",
+    body: "Layered execution with play, pause, step and speed — parallel branches light up together.",
+  },
+  {
+    label: "Load playground",
+    body: "Give nodes capacity, replicas, latency and error rates, then push traffic through and watch where it breaks.",
+  },
+  {
+    label: "AI assistant",
+    body: "Design, extend, review or explain — with your canvas as context and your own provider key.",
+  },
+  {
+    label: "Sharing",
+    body: "JSON export and import, PNG export, and self-contained share links that need no server.",
+  },
+  {
+    label: "Runs anywhere",
+    body: "Vercel, any Node host, a static CDN, one npx command, or a packaged desktop app.",
+  },
+]
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen w-full bg-black text-zinc-100 font-sans selection:bg-zinc-800 selection:text-white overflow-x-hidden">
-
-      {/* ---- NAV ---- */}
-      <nav className="w-full border-b border-zinc-900 bg-black/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="bg-zinc-900 p-1.5 rounded-lg group-hover:bg-zinc-800 transition-colors">
-              <GiNautilusShell className="text-xl text-white" />
-            </div>
-            <span className="font-bold tracking-tight text-lg">nautilus</span>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* ---------------- HEADER ---------------- */}
+      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-[1100px] items-center gap-3 px-4 sm:px-5">
+          <Link href="/" className="flex items-center gap-2 text-sm font-medium tracking-tight">
+            <NautilusMark className="h-6 w-6" />
+            Nautilus
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/docs" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block">
-              Documentation
-            </Link>
-            <Link href="https://github.com/Somilg11/nautilus" target="_blank" className="text-zinc-400 hover:text-white transition-colors">
-              <FaGithub className="text-xl" />
-            </Link>
+          <span className="text-muted-foreground/40">/</span>
+          <span className="text-sm text-muted-foreground">About</span>
+
+          <div className="ml-auto flex items-center gap-1.5">
+            <Button asChild variant="ghost" size="sm" className="h-8 text-[13px] text-muted-foreground">
+              <Link href="/docs">Docs</Link>
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="hidden h-8 text-[13px] text-muted-foreground sm:inline-flex"
+            >
+              <Link href="https://github.com/Somilg11/nautilus" target="_blank" rel="noreferrer noopener">
+                GitHub <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+            <Button asChild size="sm" className="h-8 text-[13px]">
+              <Link href="/dashboard">Open editor</Link>
+            </Button>
           </div>
         </div>
-      </nav>
+      </header>
 
-      <main>
-
-        {/* ---- HERO SECTION ---- */}
-        <section className="relative pt-32 pb-20 px-6 border-b border-zinc-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900/20 via-black to-black">
-          {/* Background Grid */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
-
-          <div className="max-w-4xl mx-auto text-center relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/50 border border-zinc-800 text-xs font-medium text-zinc-400 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              v1.0.0 is now live
+      <main className="mx-auto max-w-[1100px] px-4 sm:px-5">
+        {/* ---------------- HERO ---------------- */}
+        <section className="border-b py-14 sm:py-20">
+          <div className="max-w-[46rem] space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Open source · MIT licensed
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent pb-2">
-              System design for the <br /> modern engineer.
+            <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight sm:text-[52px]">
+              System design should be
+              <br />
+              readable, runnable and yours.
             </h1>
 
-            <p className="text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Nautilus is the open-source, AI-powered workspace where architecture meets intelligence.
-              Visualize, plan, and document complex systems at the speed of thought.
+            <p className="max-w-[38rem] text-[16px] leading-7 text-muted-foreground">
+              Nautilus is a browser-only canvas for designing, simulating and
+              explaining software architecture. No accounts, no backend, no
+              lock-in — just a graph you can draw, run traffic through, share as
+              a file, and host yourself.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/">
-                <Button size="lg" className="h-12 px-8 text-base rounded-full bg-white text-black hover:bg-zinc-200">
-                  Start Designing <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="https://github.com/Somilg11/nautilus" target="_blank">
-                <Button size="lg" variant="outline" className="h-12 px-8 text-base rounded-full border-zinc-800 bg-black hover:bg-zinc-900 text-zinc-300">
-                  <FaGithub className="mr-2 h-4 w-4" /> Star on GitHub
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* ---- MISSION ---- */}
-        <section className="py-24 px-6 border-b border-zinc-900">
-          <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight mb-6">Built for clarity in a complex world.</h2>
-              <div className="space-y-6 text-lg text-zinc-400 leading-relaxed">
-                <p>
-                  Modern software architecture is complex. Microservices, event-driven patterns, and cloud-native infrastructure
-                  make it harder than ever to keep a mental model of your system.
-                </p>
-                <p>
-                  We built Nautilus to solve this. It's not just a drawing tool—it's a thinking tool.
-                  With AI assistance, smart templates, and a semantic understanding of your components,
-                  Nautilus helps you communicate your technical vision clearly.
-                </p>
-              </div>
-            </div>
-            <div className="relative aspect-square md:aspect-auto md:h-[400px] bg-zinc-900/50 rounded-2xl border border-zinc-800 overflow-hidden flex items-center justify-center group">
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <GiNautilusShell className="text-9xl text-zinc-800 group-hover:text-zinc-700 transition-colors duration-500" />
-            </div>
-          </div>
-        </section>
-
-        {/* ---- AI DEMO SECTION ---- */}
-        <section className="py-24 px-6 bg-zinc-950 border-b border-zinc-900">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center justify-center p-3 bg-blue-500/10 rounded-xl mb-4">
-                <Sparkles className="h-6 w-6 text-blue-400" />
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight mb-4">From Prompt to Diagram</h2>
-              <p className="text-zinc-400 max-w-2xl mx-auto">
-                Describe your system in plain English, and watch Nautilus generate a complete, editable architecture diagram instantly.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-              {/* Chat UI */}
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 h-[400px] flex flex-col shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
-                <div className="flex-1 space-y-4">
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
-                      <FaCode className="text-xs text-zinc-400" />
-                    </div>
-                    <div className="bg-zinc-800 rounded-2xl rounded-tl-none p-3 text-sm text-zinc-300 max-w-[80%]">
-                      What are we building today?
-                    </div>
-                  </div>
-                  <div className="flex gap-3 flex-row-reverse">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-white">U</span>
-                    </div>
-                    <div className="bg-blue-600/20 border border-blue-500/30 rounded-2xl rounded-tr-none p-3 text-sm text-blue-100 max-w-[80%]">
-                      Design a scalable e-commerce backend with microservices, Redis caching, and a Postgres database.
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
-                      <FaRobot className="text-xs text-blue-400" />
-                    </div>
-                    <div className="bg-zinc-800 rounded-2xl rounded-tl-none p-3 text-sm text-zinc-300 max-w-[80%] animate-pulse">
-                      Generating architecture...
-                    </div>
-                  </div>
-                </div>
-
-                {/* Input Mock */}
-                <div className="mt-4 pt-4 border-t border-zinc-800 flex gap-2">
-                  <div className="h-10 bg-zinc-950 rounded-md border border-zinc-800 flex-1" />
-                  <div className="h-10 w-10 bg-blue-600 rounded-md" />
-                </div>
-              </div>
-
-              {/* Diagram Preview */}
-              <div className="bg-zinc-950 border border-zinc-800 rounded-2xl h-[400px] relative overflow-hidden group">
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:20px_20px]" />
-
-                {/* Floating Nodes Animation */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="relative w-64 h-64">
-                    {/* Center Node */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-zinc-900 border-2 border-blue-500 rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.2)] z-10">
-                      <FaLayerGroup className="text-blue-500 text-2xl" />
-                    </div>
-
-                    {/* Satellite Nodes */}
-                    {[0, 1, 2, 3].map((i) => (
-                      <div key={i}
-                        className="absolute w-12 h-12 bg-zinc-900 border border-zinc-700 rounded-lg flex items-center justify-center shadow-lg transition-all duration-1000"
-                        style={{
-                          top: i === 0 ? '0' : i === 1 ? '50%' : i === 2 ? '100%' : '50%',
-                          left: i === 0 ? '50%' : i === 1 ? '100%' : i === 2 ? '50%' : '0%',
-                          transform: 'translate(-50%, -50%)',
-                        }}
-                      >
-                        <div className="w-2 h-2 rounded-full bg-zinc-500" />
-                        {/* Connecting Lines (Pseudo) */}
-                        <div className="absolute inset-0 border border-dashed border-zinc-800 -z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    ))}
-
-                    {/* SVG Lines */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none text-zinc-800" style={{ overflow: 'visible' }}>
-                      <line x1="50%" y1="50%" x2="50%" y2="10%" stroke="currentColor" strokeWidth="2" />
-                      <line x1="50%" y1="50%" x2="90%" y2="50%" stroke="currentColor" strokeWidth="2" />
-                      <line x1="50%" y1="50%" x2="50%" y2="90%" stroke="currentColor" strokeWidth="2" />
-                      <line x1="50%" y1="50%" x2="10%" y2="50%" stroke="currentColor" strokeWidth="2" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ---- FEATURES GRID ---- */}
-        <section className="py-24 px-6 bg-black">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold tracking-tight mb-4">Everything you need to design better.</h2>
-              <p className="text-zinc-400">Powerful features wrapped in a minimal, distraction-free interface.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                {
-                  icon: <FaBolt />,
-                  title: "AI Generation",
-                  desc: "Turn text prompts into complete architecture diagrams instantly using OpenAI, Claude, or Gemini."
-                },
-                {
-                  icon: <FaLayerGroup />,
-                  title: "Smart Templates",
-                  desc: "Production-ready patterns for Netflix, Uber, WhatsApp, and more at your fingertips."
-                },
-                {
-                  icon: <FaEdit />,
-                  title: "Fluid Editing",
-                  desc: "A high-performance canvas engine that feels native. Group, align, and connect with ease."
-                },
-                {
-                  icon: <FaCode />,
-                  title: "Developer First",
-                  desc: "Export to JSON, integrate with your workflow, and customize via open-source code."
-                },
-                {
-                  icon: <FaShareAlt />,
-                  title: "Share & Export",
-                  desc: "Generate high-quality PNGs for your technical documentation or share live views."
-                },
-                {
-                  icon: <FaHeart />,
-                  title: "Open Source",
-                  desc: "Free forever. No hidden fees. Built by the community, for the community."
-                }
-              ].map((feature, i) => (
-                <div key={i} className="bg-zinc-950 border border-zinc-800 p-8 rounded-2xl hover:border-zinc-700 transition-colors group">
-                  <div className="h-12 w-12 bg-zinc-900 rounded-lg flex items-center justify-center text-zinc-400 mb-6 group-hover:text-white group-hover:bg-zinc-800 transition-all">
-                    <span className="text-xl">{feature.icon}</span>
-                  </div>
-                  <h3 className="text-xl font-bold mb-3 text-zinc-100">{feature.title}</h3>
-                  <p className="text-zinc-500 leading-relaxed">
-                    {feature.desc}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ---- CTA ---- */}
-        <section className="py-32 px-6 border-t border-zinc-900">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl font-bold tracking-tight mb-6">Ready to build something great?</h2>
-            <p className="text-xl text-zinc-400 mb-10">
-              Join thousands of developers designing the future with Nautilus.
-            </p>
-            <Link href="/">
-              <Button size="lg" className="h-14 px-10 text-lg rounded-full bg-white text-black hover:bg-zinc-200">
-                Launch Studio
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <Button asChild size="sm" className="h-9 px-4 text-[13px]">
+                <Link href="/dashboard">
+                  Start designing <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Link>
               </Button>
-            </Link>
+              <Button asChild size="sm" variant="outline" className="h-9 px-4 text-[13px]">
+                <Link href="/docs/quick-start">Read the quick start</Link>
+              </Button>
+            </div>
           </div>
         </section>
 
+        {/* ---------------- WHY ---------------- */}
+        <section className="grid gap-8 border-b py-14 sm:py-20 md:grid-cols-[1fr_1.1fr] md:gap-10">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              Why it exists
+            </div>
+            <h2 className="mt-3 text-[26px] font-semibold tracking-tight">
+              Architecture tools stopped being about architecture.
+            </h2>
+          </div>
+          <div className="space-y-4">
+            <p className="text-[15px] leading-7 text-muted-foreground">
+              Most diagramming tools treat a system design as a picture: shapes,
+              arrows, a login wall and a pricing page. The structure of the system
+              — what depends on what — is thrown away the moment you save.
+            </p>
+            <p className="text-[15px] leading-7 text-muted-foreground">
+              Nautilus keeps that structure. Because the canvas holds a real
+              directed graph, the same document can be traced, loaded with
+              traffic until a service saturates, reviewed by an assistant that
+              understands it, and committed to a repository as plain JSON. And
+              because it runs entirely in the browser, none of that requires
+              trusting anyone with your architecture.
+            </p>
+          </div>
+        </section>
+
+        {/* ---------------- PRINCIPLES ---------------- */}
+        <section className="border-b py-20">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+            Principles
+          </div>
+          <h2 className="mt-3 text-[26px] font-semibold tracking-tight">
+            Four decisions everything else follows from
+          </h2>
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {PRINCIPLES.map((p) => (
+              <div key={p.title} className="rounded-lg border bg-card p-5">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-7 w-7 place-items-center rounded-md bg-muted text-foreground">
+                    {p.icon}
+                  </span>
+                  <span className="text-[14px] font-medium">{p.title}</span>
+                </div>
+                <p className="mt-2 text-[13.5px] leading-6 text-muted-foreground">{p.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ---------------- WHAT'S INSIDE ---------------- */}
+        <section className="border-b py-20">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+            What&apos;s inside
+          </div>
+          <h2 className="mt-3 text-[26px] font-semibold tracking-tight">
+            A short tour
+          </h2>
+
+          <div className="mt-8 divide-y rounded-lg border">
+            {INSIDE.map((item) => (
+              <div key={item.label} className="grid gap-1 px-5 py-4 sm:grid-cols-[200px_1fr] sm:gap-6">
+                <div className="text-[14px] font-medium">{item.label}</div>
+                <div className="text-[13.5px] leading-6 text-muted-foreground">{item.body}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4">
+            <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-[13px] text-muted-foreground">
+              <Link href="/docs">
+                Full documentation <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
+        </section>
+
+        {/* ---------------- SIMULATION ---------------- */}
+        <section className="grid gap-8 border-b py-14 sm:py-20 md:grid-cols-[1fr_1.1fr] md:gap-10">
+          <div>
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              <Play className="h-3.5 w-3.5" /> Simulation
+            </div>
+            <h2 className="mt-3 text-[26px] font-semibold tracking-tight">
+              A diagram that answers back
+            </h2>
+          </div>
+          <div className="space-y-4">
+            <p className="text-[15px] leading-7 text-muted-foreground">
+              <strong className="text-foreground">Trace</strong> walks the graph
+              in dependency order: entry points first, then everything whose
+              upstream work has finished — so parallel branches light up
+              together, and cycles get named instead of hanging.
+            </p>
+            <p className="text-[15px] leading-7 text-muted-foreground">
+              The <strong className="text-foreground">load playground</strong>{" "}
+              goes further. Give each node a capacity, replica count, latency and
+              error rate, then set the offered traffic. Every node shows its
+              utilisation, served rate and queue-inflated latency, and the panel
+              names the bottleneck, the dropped traffic and the slowest path
+              against your timeout budget. Change a number and the whole picture
+              updates instantly.
+            </p>
+            <Button asChild variant="outline" size="sm" className="h-8 text-[13px]">
+              <Link href="/docs/simulation">How simulation works</Link>
+            </Button>
+          </div>
+        </section>
+
+        {/* ---------------- AI ---------------- */}
+        <section className="grid gap-8 border-b py-14 sm:py-20 md:grid-cols-[1fr_1.1fr] md:gap-10">
+          <div>
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              <Sparkles className="h-3.5 w-3.5" /> The assistant
+            </div>
+            <h2 className="mt-3 text-[26px] font-semibold tracking-tight">
+              Useful because it can see the canvas
+            </h2>
+          </div>
+          <div className="space-y-4">
+            <p className="text-[15px] leading-7 text-muted-foreground">
+              The assistant receives your current diagram as context, so
+              &ldquo;review this&rdquo; and &ldquo;add a read replica&rdquo; mean
+              something concrete. It answers in conversation, or returns a
+              complete diagram you can apply.
+            </p>
+            <p className="text-[15px] leading-7 text-muted-foreground">
+              Nothing is applied automatically: a generated design waits behind
+              <em> Replace canvas</em>, <em>Add to canvas</em> or{" "}
+              <em>Discard</em>. Output is validated before it can touch your work,
+              and requests go straight from your browser to OpenAI, Gemini, Claude
+              or Groq with your own key.
+            </p>
+            <Button asChild variant="outline" size="sm" className="h-8 text-[13px]">
+              <Link href="/docs/ai-assistant">How the assistant works</Link>
+            </Button>
+          </div>
+        </section>
+
+        {/* ---------------- CONTRIBUTE ---------------- */}
+        <section className="py-20">
+          <div className="rounded-xl border bg-card p-6 sm:p-8">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              <GitPullRequest className="h-3.5 w-3.5" /> Contributing
+            </div>
+            <h2 className="mt-3 max-w-[34rem] text-[26px] font-semibold tracking-tight">
+              Built by the community, and small enough to be approachable
+            </h2>
+            <p className="mt-3 max-w-[42rem] text-[15px] leading-7 text-muted-foreground">
+              Adding a template or an icon is a single file. The canvas, the
+              simulation engine and the provider client are where the interesting
+              work is. Everything runs locally with{" "}
+              <code className="rounded border bg-muted/60 px-1.5 py-0.5 font-mono text-[12.5px]">
+                npm install &amp;&amp; npm run dev
+              </code>
+              .
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Button asChild size="sm" className="h-9 px-4 text-[13px]">
+                <Link href="/docs/contributing">Contributor guide</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline" className="h-9 px-4 text-[13px]">
+                <Link href="https://github.com/Somilg11/nautilus" target="_blank" rel="noreferrer noopener">
+                  GitHub <ArrowUpRight className="ml-1.5 h-3.5 w-3.5" />
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="ghost" className="h-9 px-4 text-[13px] text-muted-foreground">
+                <Link href="https://github.com/Somilg11/nautilus/issues" target="_blank" rel="noreferrer noopener">
+                  Open an issue
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* ---- FOOTER ---- */}
-      <footer className="border-t border-zinc-900 bg-black py-12 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <GiNautilusShell className="text-zinc-600" />
-            <span className="font-bold text-zinc-600">nautilus</span>
-          </div>
-          <div className="text-sm text-zinc-600">
-            © {new Date().getFullYear()} Open Source. MIT License.
-          </div>
-          <div className="flex gap-6">
-            <Link href="https://github.com/Somilg11/nautilus" className="text-zinc-600 hover:text-zinc-400 transition-colors">GitHub</Link>
-            <Link href="/docs" className="text-zinc-600 hover:text-zinc-400 transition-colors">Docs</Link>
-          </div>
+      <footer className="border-t">
+        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-4 px-4 py-8 sm:px-5 text-[13px] text-muted-foreground">
+          <span>Nautilus — MIT licensed</span>
+          <Link href="/docs" className="hover:text-foreground">Docs</Link>
+          <Link href="/dashboard" className="hover:text-foreground">Editor</Link>
+          <Link
+            href="https://github.com/Somilg11/nautilus"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="hover:text-foreground"
+          >
+            Source
+          </Link>
         </div>
       </footer>
     </div>
-  );
+  )
 }

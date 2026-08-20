@@ -1,10 +1,5 @@
 import React from "react"
-import {
-    getBezierPath,
-    getEdgeCenter,
-    EdgeProps,
-    getMarkerEnd,
-} from "react-flow-renderer"
+import { getBezierPath, EdgeProps } from "reactflow"
 
 const foreignObjectSize = 30
 
@@ -19,21 +14,15 @@ export default function DeletableEdge({
     style = {},
     markerEnd,
     selected,
+    data,
 }: EdgeProps) {
-    const edgePath = getBezierPath({
+    const [edgePath, labelX, labelY] = getBezierPath({
         sourceX,
         sourceY,
         sourcePosition,
         targetX,
         targetY,
         targetPosition,
-    })
-
-    const [edgeCenterX, edgeCenterY] = getEdgeCenter({
-        sourceX,
-        sourceY,
-        targetX,
-        targetY,
     })
 
     const onEdgeClick = (evt: React.MouseEvent, id: string) => {
@@ -43,12 +32,15 @@ export default function DeletableEdge({
         )
     }
 
+    // Simulation state is injected by the canvas at render time (never persisted).
+    const simStatus: string | undefined = data?.__simStatus
+
     return (
         <>
             <path
                 id={id}
                 style={style}
-                className="react-flow__edge-path"
+                className={`react-flow__edge-path ${simStatus ? `sim-edge-${simStatus}` : ""}`}
                 d={edgePath}
                 markerEnd={markerEnd}
             />
@@ -64,16 +56,12 @@ export default function DeletableEdge({
                 <foreignObject
                     width={foreignObjectSize}
                     height={foreignObjectSize}
-                    x={edgeCenterX - foreignObjectSize / 2}
-                    y={edgeCenterY - foreignObjectSize / 2}
+                    x={labelX - foreignObjectSize / 2}
+                    y={labelY - foreignObjectSize / 2}
                     className="edgebutton-foreignobject"
                     requiredExtensions="http://www.w3.org/1999/xhtml"
                 >
-                    <div
-                        className="flex items-center justify-center w-full h-full"
-                    // We need to stop propagation on the container too to prevent selecting the edge again?
-                    // Actually we want to click the button.
-                    >
+                    <div className="flex items-center justify-center w-full h-full">
                         <button
                             className="w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:bg-destructive/90 shadow-md transition-colors border border-border"
                             onClick={(event) => onEdgeClick(event, id)}

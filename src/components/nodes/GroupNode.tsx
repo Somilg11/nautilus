@@ -1,5 +1,5 @@
 import React from "react"
-import { NodeProps } from "react-flow-renderer"
+import { NodeProps } from "reactflow"
 
 export default function GroupNode({ data, selected }: NodeProps) {
     return (

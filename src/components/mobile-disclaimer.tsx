@@ -1,47 +1,72 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
     DialogDescription,
+    DialogFooter,
 } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { MonitorX } from "lucide-react"
 
+const BREAKPOINT = 768
+
+/**
+ * Small-screen warning for the editor only.
+ *
+ * The canvas needs a pointer and room to drag; the marketing, docs and about
+ * pages do not, so this is mounted by the dashboard rather than the root
+ * layout. Dismissing it is remembered for the session — resizing a window
+ * should not re-nag someone who already said "continue".
+ */
 export default function MobileDisclaimer() {
     const [open, setOpen] = useState(false)
+    const [dismissed, setDismissed] = useState(false)
 
     useEffect(() => {
-        const checkMobile = () => {
-            if (window.innerWidth < 768) {
-                setOpen(true)
-            }
-        }
+        if (dismissed) return
 
-        checkMobile()
-        window.addEventListener("resize", checkMobile)
-        return () => window.removeEventListener("resize", checkMobile)
-    }, [])
+        const check = () => setOpen(window.innerWidth < BREAKPOINT)
+
+        check()
+        window.addEventListener("resize", check)
+        return () => window.removeEventListener("resize", check)
+    }, [dismissed])
+
+    function close() {
+        setDismissed(true)
+        setOpen(false)
+    }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent className="sm:max-w-[425px]">
+        <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
+            <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[420px]">
                 <DialogHeader>
-                    <div className="mx-auto bg-destructive/10 p-3 rounded-full mb-4 w-fit">
-                        <MonitorX className="h-6 w-6 text-destructive" />
+                    <div className="mx-auto mb-3 w-fit rounded-full bg-muted p-3">
+                        <MonitorX className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <DialogTitle className="text-center">Desktop Experience Recommended</DialogTitle>
-                    <DialogDescription className="text-center pt-2">
-                        Nautilus is optimized for desktop use. The canvas and editing tools may overflow or function incorrectly on smaller screens.
+                    <DialogTitle className="text-center text-[16px]">
+                        The editor works best on a larger screen
+                    </DialogTitle>
+                    <DialogDescription className="text-center text-[13px] leading-6">
+                        Nautilus&apos; canvas is built around dragging, multi-select and
+                        keyboard shortcuts, so it is rough on a phone. The docs and the
+                        rest of the site are fully mobile-friendly.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="flex justify-center pt-4">
-                    <p className="text-xs text-muted-foreground">
-                        Please switch to a larger device for the best experience.
-                    </p>
-                </div>
+
+                <DialogFooter className="flex-col gap-2 sm:flex-col">
+                    <Button onClick={close} className="w-full">
+                        Continue anyway
+                    </Button>
+                    <Button asChild variant="outline" className="w-full">
+                        <Link href="/docs">Read the docs instead</Link>
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     )

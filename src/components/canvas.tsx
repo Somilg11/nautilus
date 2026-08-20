@@ -1,28 +1,60 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useMemo, useRef } from "react"
 import ReactFlow, {
   Background,
+  BackgroundVariant,
   Controls,
+  MiniMap,
+  Panel,
   MarkerType,
   ReactFlowInstance,
   NodeChange,
   EdgeChange,
   Connection,
-} from "react-flow-renderer"
+} from "reactflow"
+
+import { toast } from "sonner"
 
 import { createNode } from "@/lib/flow-utils"
 import { useFlow } from "@/lib/flow-context"
 import NautilusNode from "@/components/nodes/NautilusNode"
+import SimulationPanel, { type LoadController } from "@/components/simulation-panel"
+import { useSimulation } from "@/lib/use-simulation"
+import {
+  DEFAULT_LOAD_PARAMS,
+  simulateLoad,
+  type LoadParams,
+} from "@/lib/simulation-model"
+import "reactflow/dist/style.css"
 import "@/styles/canvas.css"
-import { computeExecutionPath } from "@/lib/flow-execution"
 
 import DeletableEdge from "@/components/edges/deletable-edge"
 
 import GroupNode from "@/components/nodes/GroupNode"
 
 const nodeTypes = { nautilusNode: NautilusNode, groupNode: GroupNode }
+
+/** Keep the minimap readable by mirroring the node colour palette. */
+function miniMapColor(color?: string) {
+  switch (color) {
+    case "blue":
+      return "#2563eb"
+    case "green":
+      return "#16a34a"
+    case "red":
+      return "#dc2626"
+    case "yellow":
+      return "#eab308"
+    case "purple":
+      return "#9333ea"
+    case "orange":
+      return "#f97316"
+    default:
+      return "#71717a"
+  }
+}
 const edgeTypes = { deletableEdge: DeletableEdge }
 
 let CLIPBOARD: { nodes: any[]; edges: any[] } | null = null
@@ -43,6 +75,39 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     setReactFlowInstance,
     setSelectedNodeId,
   } = useFlow()
+
+  const sim = useSimulation(nodes, edges, {
+    onError: (m) => toast.error(m),
+    onWarn: (m) => toast.warning(m),
+  })
+
+  /* -----------------------------
+        LOAD PLAYGROUND
+
+     Steady-state model, recomputed on every parameter or graph change so the
+     numbers track edits live. Results are render-only, like trace marks.
+  ------------------------------ */
+  const [loadOn, setLoadOn] = React.useState(false)
+  const [loadParams, setLoadParams] = React.useState<LoadParams>(DEFAULT_LOAD_PARAMS)
+
+  const loadReport = useMemo(
+    () => (loadOn ? simulateLoad(nodes as any, edges as any, loadParams) : null),
+    [loadOn, nodes, edges, loadParams]
+  )
+
+  const load: LoadController = {
+    enabled: loadOn,
+    params: loadParams,
+    setParams: setLoadParams,
+    report: loadReport,
+    disable: () => setLoadOn(false),
+    focusNode: (id: string) => {
+      setSelectedNodeId(id)
+      setNodes((prev) => prev.map((n) => ({ ...n, selected: n.id === id })))
+      const node = nodes.find((n) => n.id === id)
+      if (node) reactFlowInstance?.setCenter(node.position.x + 80, node.position.y + 40, { zoom: 1.2, duration: 400 })
+    },
+  }
 
   /* -----------------------------
         INIT INSTANCE
@@ -233,6 +298,11 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
 
     setNodes((prev) => prev.map((n) => ({ ...n, selected: false })).concat(pastedNodes))
     setEdges((prev) => prev.concat(pastedEdges))
+  }
+
+  function duplicateSelected() {
+    copySelected()
+    pasteClipboard()
   }
 
   /* -----------------------------
@@ -491,6 +561,7 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
       ["nautilus-ungroup", ungroupSelected],
       ["nautilus-copy", copySelected],
       ["nautilus-paste", pasteClipboard],
+      ["nautilus-duplicate", duplicateSelected],
       ["nautilus-delete", deleteSelected],
       ["nautilus-zoom-in", zoomIn],
       ["nautilus-zoom-out", zoomOut],
@@ -517,12 +588,12 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
 
   /* -----------------------------
        IMPORT EVENT
+
+       The provider validates and applies the payload; the canvas only has to
+       re-frame the viewport once the new nodes are mounted.
   ------------------------------ */
   useEffect(() => {
-    function onImport(e: any) {
-      const { nodes, edges } = e.detail
-      setNodes(nodes)
-      setEdges(edges)
+    function onImport() {
       setTimeout(() => reactFlowInstance?.fitView({ padding: 0.2 }), 50)
     }
     window.addEventListener("nautilus-import", onImport)
@@ -530,60 +601,89 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
   }, [reactFlowInstance])
 
   /* -----------------------------
-        RUN FLOW VISUALIZATION
+        FLOW SIMULATION
   ------------------------------ */
   useEffect(() => {
     function onRunFlow() {
-      if (nodes.length === 0) {
-        alert("No nodes to run.")
-        return
-      }
-
-      const valid = edges.every(
-        (e) =>
-          nodes.some((n) => n.id === e.source) &&
-          nodes.some((n) => n.id === e.target)
-      )
-
-      if (!valid) {
-        alert("Invalid edges — cannot run.")
-        return
-      }
-
-      const path = computeExecutionPath(nodes, edges)
-      if (path.length === 0) {
-        alert("No valid traversal path found.")
-        return
-      }
-
-      let i = 0
-      const highlight = () => {
-        const id = path[i]
-
-        setNodes((prev) =>
-          prev.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, __glow: true } } : n
-          )
-        )
-
-        setTimeout(() => {
-          setNodes((prev) =>
-            prev.map((n) =>
-              n.id === id ? { ...n, data: { ...n.data, __glow: false } } : n
-            )
-          )
-
-          i++
-          if (i < path.length) highlight()
-        }, 700)
-      }
-
-      highlight()
+      sim.start()
+    }
+    function onStopFlow() {
+      sim.stop()
+    }
+    function onToggleLoad() {
+      setLoadOn((v) => !v)
     }
 
     window.addEventListener("nautilus-run", onRunFlow)
-    return () => window.removeEventListener("nautilus-run", onRunFlow)
-  }, [nodes, edges])
+    window.addEventListener("nautilus-run-stop", onStopFlow)
+    window.addEventListener("nautilus-load-toggle", onToggleLoad)
+    return () => {
+      window.removeEventListener("nautilus-run", onRunFlow)
+      window.removeEventListener("nautilus-run-stop", onStopFlow)
+      window.removeEventListener("nautilus-load-toggle", onToggleLoad)
+    }
+  }, [sim.start, sim.stop])
+
+  // Let the toolbar mirror the run state without owning it.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("nautilus-run-state", { detail: { status: sim.status, load: loadOn } })
+    )
+  }, [sim.status, loadOn])
+
+  // The properties panel reads live metrics from here: canvas node data is
+  // decorated at render time only, so the report has to be broadcast.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("nautilus-load-report", { detail: { report: loadReport } })
+    )
+  }, [loadReport])
+
+  /* -----------------------------
+      RENDER-TIME SIMULATION MARKS
+
+      Marks are merged into node/edge data only for rendering, so a run never
+      touches canvas state (no undo entries, no autosave, no export noise).
+  ------------------------------ */
+  const renderedNodes = useMemo(() => {
+    if (sim.nodeMarks.size === 0 && !loadReport) return nodes
+
+    return nodes.map((n) => {
+      const mark = sim.nodeMarks.get(n.id)
+      const metrics = loadReport?.metrics[n.id]
+      if (!mark && !metrics) return n
+
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          ...(mark ? { __simStatus: mark } : {}),
+          ...(metrics ? { __metrics: metrics } : {}),
+        },
+      }
+    })
+  }, [nodes, sim.nodeMarks, loadReport])
+
+  const renderedEdges = useMemo(
+    () =>
+      edges.map((e) => {
+        const mark = sim.edgeMarks.get(e.id)
+        return {
+          ...e,
+          type: "deletableEdge", // Force type for existing edges
+          animated: mark === "active",
+          data: { ...(e.data ?? {}), __simStatus: mark },
+          style: e.selected
+            ? { stroke: "#ff4d4d", strokeWidth: 2 }
+            : mark === "active"
+              ? { stroke: "#00ff99", strokeWidth: 2.5 }
+              : mark === "done"
+                ? { stroke: "#00b46e", strokeWidth: 1.5 }
+                : { stroke: "#999" },
+        }
+      }),
+    [edges, sim.edgeMarks]
+  )
 
   /* -----------------------------
          SHOW CANVAS
@@ -595,14 +695,8 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
       style={{ position: "relative" }}
     >
       <ReactFlow
-        nodes={nodes}
-        edges={edges.map((e) => ({
-          ...e,
-          type: "deletableEdge", // Force type for existing edges
-          style: e.selected
-            ? { stroke: "#ff4d4d", strokeWidth: 2 }
-            : { stroke: "#999" },
-        }))}
+        nodes={renderedNodes}
+        edges={renderedEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onInit={onInit}
@@ -615,9 +709,36 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
         onConnect={onConnect}
         fitView
       >
-        <Background gap={20} size={1} />
-        <Controls />
+        <Background variant={BackgroundVariant.Dots} gap={18} size={1} className="opacity-60" />
+
+        <Controls
+          showInteractive={false}
+          className="!bottom-4 !left-4 !shadow-sm [&>button]:!border-border [&>button]:!bg-background [&>button]:!text-foreground"
+        />
+
+        <MiniMap
+          pannable
+          zoomable
+          ariaLabel="Diagram overview"
+          className="!bottom-4 !right-4 !h-28 !w-44 !rounded-lg !border !bg-background/80 !shadow-sm"
+          maskColor="rgba(0,0,0,0.06)"
+          nodeColor={(n) => miniMapColor(n.data?.color)}
+          nodeStrokeWidth={2}
+        />
+
+        {nodes.length === 0 && (
+          <Panel position="top-center" className="!top-16">
+            <div className="rounded-lg border bg-background/90 px-4 py-3 text-center shadow-sm backdrop-blur">
+              <div className="text-[13px] font-medium">Empty canvas</div>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Drag a component from the left panel, load a template, or ask the assistant.
+              </p>
+            </div>
+          </Panel>
+        )}
       </ReactFlow>
+
+      <SimulationPanel sim={sim} load={load} />
     </div>
   )
 }

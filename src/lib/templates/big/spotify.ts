@@ -1,4 +1,4 @@
-import { MarkerType } from "react-flow-renderer"
+import { MarkerType } from "reactflow"
 
 export const SpotifyTemplate = {
   id: "spotify",
@@ -10,13 +10,23 @@ export const SpotifyTemplate = {
       id: "client-mobile",
       type: "nautilusNode",
       position: { x: 200, y: 0 },
-      data: { label: "Mobile App", icon: "client_mobile", color: "green" },
+      data: {
+        label: "Mobile App",
+        icon: "client_mobile",
+        color: "green",
+        sim: { latencyMs: 5 },
+      },
     },
     {
       id: "client-desktop",
       type: "nautilusNode",
       position: { x: 400, y: 0 },
-      data: { label: "Desktop App", icon: "client_web", color: "green" },
+      data: {
+        label: "Desktop App",
+        icon: "client_web",
+        color: "green",
+        sim: { latencyMs: 5 },
+      },
     },
 
     // Entry
@@ -24,7 +34,12 @@ export const SpotifyTemplate = {
       id: "access-point",
       type: "nautilusNode",
       position: { x: 300, y: 150 },
-      data: { label: "Access Point (Gateway)", icon: "api_server", color: "black" },
+      data: {
+        label: "Access Point (Gateway)",
+        icon: "api_server",
+        color: "black",
+        sim: { capacity: 20000, replicas: 6, latencyMs: 8, errorRate: 0.001 },
+      },
     },
 
     // Content Delivery
@@ -32,7 +47,12 @@ export const SpotifyTemplate = {
       id: "cdn",
       type: "nautilusNode",
       position: { x: 600, y: 150 },
-      data: { label: "CDN (Audio Files)", icon: "cdn", color: "orange" },
+      data: {
+        label: "CDN (Audio Files)",
+        icon: "cdn",
+        color: "orange",
+        sim: { capacity: 250000, replicas: 2, latencyMs: 15, errorRate: 0.0002 },
+      },
     },
 
     // Services
@@ -40,19 +60,34 @@ export const SpotifyTemplate = {
       id: "playlist-service",
       type: "nautilusNode",
       position: { x: 100, y: 300 },
-      data: { label: "Playlist Service", icon: "microservice", color: "blue" },
+      data: {
+        label: "Playlist Service",
+        icon: "microservice",
+        color: "blue",
+        sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+      },
     },
     {
       id: "search-service",
       type: "nautilusNode",
       position: { x: 300, y: 300 },
-      data: { label: "Search Service", icon: "microservice", color: "blue" },
+      data: {
+        label: "Search Service",
+        icon: "microservice",
+        color: "blue",
+        sim: { capacity: 8000, replicas: 8, latencyMs: 30, errorRate: 0.002 },
+      },
     },
     {
       id: "player-service",
       type: "nautilusNode",
       position: { x: 500, y: 300 },
-      data: { label: "Player Service", icon: "microservice", color: "blue" },
+      data: {
+        label: "Player Service",
+        icon: "microservice",
+        color: "blue",
+        sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+      },
     },
 
     // Data
@@ -60,13 +95,23 @@ export const SpotifyTemplate = {
       id: "cassandra-cluster",
       type: "nautilusNode",
       position: { x: 200, y: 450 },
-      data: { label: "Cassandra Cluster", icon: "cassandra", color: "red" },
+      data: {
+        label: "Cassandra Cluster",
+        icon: "cassandra",
+        color: "red",
+        sim: { capacity: 15000, replicas: 3, latencyMs: 6 },
+      },
     },
     {
       id: "elasticsearch",
       type: "nautilusNode",
       position: { x: 400, y: 450 },
-      data: { label: "Elasticsearch", icon: "elastic", color: "yellow" },
+      data: {
+        label: "Elasticsearch",
+        icon: "elastic",
+        color: "yellow",
+        sim: { capacity: 8000, replicas: 3, latencyMs: 30 },
+      },
     },
 
     // Analytics
@@ -74,13 +119,23 @@ export const SpotifyTemplate = {
       id: "kafka",
       type: "nautilusNode",
       position: { x: 300, y: 600 },
-      data: { label: "Log Aggregation (Kafka)", icon: "kafka", color: "orange" },
+      data: {
+        label: "Log Aggregation (Kafka)",
+        icon: "kafka",
+        color: "orange",
+        sim: { capacity: 100000, replicas: 3, latencyMs: 3 },
+      },
     },
     {
       id: "hadoop",
       type: "nautilusNode",
       position: { x: 300, y: 750 },
-      data: { label: "Hadoop (Analytics)", icon: "database_sql", color: "yellow" },
+      data: {
+        label: "Hadoop (Analytics)",
+        icon: "database_sql",
+        color: "yellow",
+        sim: { capacity: 6000, replicas: 3, latencyMs: 12, errorRate: 0.0005 },
+      },
     },
   ],
   edges: [

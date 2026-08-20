@@ -2,6 +2,7 @@
 "use client"
 
 import { useState } from "react"
+import { Search } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import {
@@ -237,77 +238,129 @@ const CATEGORIES: Category[] = [
    COMPONENT
 =========================================== */
 
+const ALL_ITEMS = CATEGORIES.flatMap((c) =>
+  c.items.map((i) => ({ ...i, category: c.title }))
+)
+
 export default function LeftSidebar({
   collapsed = false,
 }: {
   collapsed?: boolean
 }) {
   const [search, setSearch] = useState("")
+  const query = search.trim().toLowerCase()
 
   function onDragStart(e: React.DragEvent, componentId: string) {
     e.dataTransfer.setData("application/reactflow", componentId)
     e.dataTransfer.effectAllowed = "move"
   }
 
-  if (collapsed) {
-    return (
-      <aside className="w-10 border-r h-full flex items-center justify-center cursor-pointer opacity-60">
-        <span className="-rotate-90">›</span>
-      </aside>
-    )
-  }
+  if (collapsed) return null
+
+  // While searching, a flat result list beats collapsed accordion groups —
+  // matches used to hide inside sections the user then had to expand.
+  const results = query
+    ? ALL_ITEMS.filter(
+        (i) =>
+          i.label.toLowerCase().includes(query) ||
+          i.id.includes(query) ||
+          i.category.toLowerCase().includes(query)
+      )
+    : []
 
   return (
-    <aside className="w-72 border-r h-full flex flex-col bg-card min-h-0">
-
-
-      {/* Search */}
-      <div className="p-3">
-        <Input
-          placeholder="Search components..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.stopPropagation()}
-        />
+    <aside className="flex h-full w-full min-h-0 flex-col bg-background">
+      <div className="flex items-center justify-between px-3 pt-3 pb-2">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+          Components
+        </span>
+        <span className="text-[11px] text-muted-foreground">{ALL_ITEMS.length}</span>
       </div>
 
-      {/* Scrollable Content */}
-      <ScrollArea className="flex-1 px-3 pb-3 min-h-0">
-        <Accordion type="multiple" className="space-y-1">
-          {CATEGORIES.map((category) => {
-            const filtered = category.items.filter((i) =>
-              i.label.toLowerCase().includes(search.toLowerCase())
-            )
+      <div className="px-3 pb-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search components…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+            aria-label="Search components"
+            className="h-8 pl-8 text-[13px]"
+          />
+        </div>
+      </div>
 
-            if (filtered.length === 0) return null
-
-            return (
-              <AccordionItem key={category.title} value={category.title}>
-                <AccordionTrigger>{category.title}</AccordionTrigger>
-                <AccordionContent>
-                  <div className="grid grid-cols-2 gap-3 py-2">
-                    {filtered.map((c) => {
-                      const Icon = c.icon
-                      return (
-                        <div
-                          key={c.id}
-                          draggable
-                          onDragStart={(e) => onDragStart(e, c.id)}
-                          className="rounded-xl border bg-background hover:bg-accent cursor-grab p-3 flex flex-col items-center justify-center gap-2 shadow-sm transition"
-                        >
-                          <Icon className="h-6 w-6" />
-                          <span className="text-xs text-center">{c.label}</span>
-                        </div>
-                      )
-                    })}
+      <ScrollArea className="min-h-0 flex-1 px-3 pb-3">
+        {query ? (
+          <div className="space-y-1 py-1">
+            {results.map((c) => (
+              <PaletteRow key={c.id} item={c} onDragStart={onDragStart} showCategory />
+            ))}
+            {results.length === 0 && (
+              <p className="py-8 text-center text-[12px] text-muted-foreground">
+                No component matches “{search}”.
+              </p>
+            )}
+          </div>
+        ) : (
+          <Accordion
+            type="multiple"
+            defaultValue={[CATEGORIES[0].title, CATEGORIES[1].title]}
+            className="space-y-0.5"
+          >
+            {CATEGORIES.map((category) => (
+              <AccordionItem key={category.title} value={category.title} className="border-b-0">
+                <AccordionTrigger className="rounded-md px-2 py-2 text-[13px] font-medium hover:bg-muted/60 hover:no-underline">
+                  {category.title}
+                </AccordionTrigger>
+                <AccordionContent className="pb-2">
+                  <div className="space-y-1">
+                    {category.items.map((c) => (
+                      <PaletteRow key={c.id} item={c} onDragStart={onDragStart} />
+                    ))}
                   </div>
                 </AccordionContent>
               </AccordionItem>
-            )
-          })}
-        </Accordion>
+            ))}
+          </Accordion>
+        )}
       </ScrollArea>
+
+      <div className="border-t px-3 py-2 text-[11px] text-muted-foreground">
+        Drag any component onto the canvas
+      </div>
     </aside>
   )
 }
 
+function PaletteRow({
+  item,
+  onDragStart,
+  showCategory,
+}: {
+  item: ComponentItem & { category?: string }
+  onDragStart: (e: React.DragEvent, id: string) => void
+  showCategory?: boolean
+}) {
+  const Icon = item.icon
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, item.id)}
+      title={`Drag "${item.label}" onto the canvas`}
+      className="flex cursor-grab items-center gap-2.5 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:border-border hover:bg-accent active:cursor-grabbing"
+    >
+      <span className="grid h-6 w-6 shrink-0 place-items-center rounded bg-muted text-foreground [&_svg]:h-3.5 [&_svg]:w-3.5">
+        <Icon />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px]">{item.label}</span>
+        {showCategory && item.category && (
+          <span className="block truncate text-[11px] text-muted-foreground">{item.category}</span>
+        )}
+      </span>
+    </div>
+  )
+}

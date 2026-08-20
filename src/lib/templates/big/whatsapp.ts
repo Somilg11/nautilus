@@ -1,4 +1,4 @@
-import { MarkerType } from "react-flow-renderer"
+import { MarkerType } from "reactflow"
 
 export const WhatsAppTemplate = {
     id: "whatsapp",
@@ -10,13 +10,23 @@ export const WhatsAppTemplate = {
             id: "user-a",
             type: "nautilusNode",
             position: { x: 100, y: 0 },
-            data: { label: "User A", icon: "client_mobile", color: "green" },
+            data: {
+                label: "User A",
+                icon: "client_mobile",
+                color: "green",
+                sim: { latencyMs: 5 },
+            },
         },
         {
             id: "user-b",
             type: "nautilusNode",
             position: { x: 500, y: 0 },
-            data: { label: "User B", icon: "client_mobile", color: "green" },
+            data: {
+                label: "User B",
+                icon: "client_mobile",
+                color: "green",
+                sim: { latencyMs: 5 },
+            },
         },
 
         // Load Balancer
@@ -24,7 +34,12 @@ export const WhatsAppTemplate = {
             id: "lb",
             type: "nautilusNode",
             position: { x: 300, y: 100 },
-            data: { label: "Load Balancer", icon: "load_balancer", color: "blue" },
+            data: {
+                label: "Load Balancer",
+                icon: "load_balancer",
+                color: "blue",
+                sim: { capacity: 50000, replicas: 4, latencyMs: 2 },
+            },
         },
 
         // Chat Gateway
@@ -32,7 +47,12 @@ export const WhatsAppTemplate = {
             id: "chat-gateway",
             type: "nautilusNode",
             position: { x: 300, y: 250 },
-            data: { label: "Chat Gateway (Ejabberd)", icon: "api_server", color: "red" },
+            data: {
+                label: "Chat Gateway (Ejabberd)",
+                icon: "api_server",
+                color: "red",
+                sim: { capacity: 20000, replicas: 20, latencyMs: 8, errorRate: 0.001 },
+            },
         },
 
         // Services
@@ -40,13 +60,23 @@ export const WhatsAppTemplate = {
             id: "auth-service",
             type: "nautilusNode",
             position: { x: 100, y: 400 },
-            data: { label: "Auth Service", icon: "auth", color: "purple" },
+            data: {
+                label: "Auth Service",
+                icon: "auth",
+                color: "purple",
+                sim: { capacity: 5000, replicas: 40, latencyMs: 40, errorRate: 0.001 },
+            },
         },
         {
             id: "group-service",
             type: "nautilusNode",
             position: { x: 500, y: 400 },
-            data: { label: "Group Service", icon: "microservice", color: "purple" },
+            data: {
+                label: "Group Service",
+                icon: "microservice",
+                color: "purple",
+                sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+            },
         },
 
         // Data Layer
@@ -54,13 +84,23 @@ export const WhatsAppTemplate = {
             id: "mnesia",
             type: "nautilusNode",
             position: { x: 300, y: 400 },
-            data: { label: "Mnesia (Session DB)", icon: "redis", color: "orange" },
+            data: {
+                label: "Mnesia (Session DB)",
+                icon: "redis",
+                color: "orange",
+                sim: { capacity: 120000, replicas: 8, latencyMs: 1 },
+            },
         },
         {
             id: "cassandra",
             type: "nautilusNode",
             position: { x: 300, y: 550 },
-            data: { label: "Cassandra (Message Store)", icon: "cassandra", color: "blue" },
+            data: {
+                label: "Cassandra (Message Store)",
+                icon: "cassandra",
+                color: "blue",
+                sim: { capacity: 15000, replicas: 8, latencyMs: 6 },
+            },
         },
 
         // Media
@@ -68,13 +108,23 @@ export const WhatsAppTemplate = {
             id: "media-server",
             type: "nautilusNode",
             position: { x: 700, y: 250 },
-            data: { label: "Media Server (HTTP)", icon: "web_server", color: "green" },
+            data: {
+                label: "Media Server (HTTP)",
+                icon: "web_server",
+                color: "green",
+                sim: { capacity: 8000, replicas: 20, latencyMs: 15 },
+            },
         },
         {
             id: "blob-storage",
             type: "nautilusNode",
             position: { x: 700, y: 400 },
-            data: { label: "Blob Storage", icon: "s3", color: "orange" },
+            data: {
+                label: "Blob Storage",
+                icon: "s3",
+                color: "orange",
+                sim: { capacity: 15000, replicas: 4, latencyMs: 45 },
+            },
         },
     ],
     edges: [

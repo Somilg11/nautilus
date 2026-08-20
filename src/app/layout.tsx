@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import MobileDisclaimer from "@/components/mobile-disclaimer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,7 +16,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Nautilus",
-  description: "System design visualization tool",
+  description:
+    "Open-source canvas for designing, simulating and explaining software architecture.",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -37,7 +42,6 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Toaster />
-          <MobileDisclaimer />
           {children}
         </ThemeProvider>
       </body>

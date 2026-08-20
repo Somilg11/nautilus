@@ -6,6 +6,7 @@ import LeftSidebar from "@/components/left-sidebar"
 import Canvas from "@/components/canvas"
 import RightSidebar from "@/components/right-sidebar"
 import EditingTools from "@/components/editing-tools"
+import MobileDisclaimer from "@/components/mobile-disclaimer"
 import { FlowProvider, useFlow } from "@/lib/flow-context"
 
 function DashboardInner() {
@@ -27,16 +28,16 @@ function DashboardInner() {
         onToggleLeftSidebar={() => setLeftOpen((p) => !p)}
       />
 
-      {/* 🔥 NEW — EDITING TOOLS (Canvas toolbar) */}
+      {/* Canvas editing bar */}
       <EditingTools />
 
       {/* MAIN LAYOUT */}
       <div className="flex flex-1 overflow-hidden min-h-0">
         <div
           className={`
-            transition-all duration-300 ease-in-out
-            ${leftOpen ? "w-72" : "w-0"}
-            overflow-hidden border-r
+            transition-[width] duration-200 ease-out
+            ${leftOpen ? "w-64" : "w-0"}
+            overflow-hidden border-r bg-background
             h-full min-h-0
           `}
         >
@@ -49,6 +50,9 @@ function DashboardInner() {
       </div>
 
       <RightSidebar open={rightOpen} onOpenChange={setRightOpen} />
+
+      {/* The canvas is desktop-first; warn once on small screens. */}
+      <MobileDisclaimer />
     </div>
   )
 }

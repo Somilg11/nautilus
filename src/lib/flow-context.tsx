@@ -3,8 +3,9 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react"
-import type { Edge, Node, ReactFlowInstance } from "react-flow-renderer"
+import type { Edge, Node, ReactFlowInstance } from "reactflow"
 import LZString from "lz-string"
+import { sanitizeDiagram } from "./diagram-io"
 
 type SelectionMode = "select" | "pan"
 
@@ -74,6 +75,15 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
   // selection mode (select/pan)
   const [selectionMode, setSelectionMode] = useState<SelectionMode>("select")
 
+  // Mirrors of the latest state so the wrapped setters can compute the next
+  // value (and snapshot history) outside of a React state updater.
+  const nodesRef = useRef<Node<any>[]>([])
+  const edgesRef = useRef<Edge<any>[]>([])
+  useEffect(() => {
+    nodesRef.current = nodes
+    edgesRef.current = edges
+  }, [nodes, edges])
+
   // history refs (avoid re-renders)
   const historyRef = useRef<{ nodes: Node<any>[]; edges: Edge<any>[] }[]>([])
   const historyIndexRef = useRef<number>(-1)
@@ -128,41 +138,57 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     return historyIndexRef.current < historyRef.current.length - 1
   }
 
-  // wrapped setters (push history and mark unsaved)
+  /*
+    Wrapped setters: push a history snapshot and mark the doc unsaved.
+
+    The next value is computed from a ref instead of inside the state updater —
+    updaters must stay pure, and React invokes them twice in development, which
+    used to duplicate history entries and trigger cross-component updates.
+  */
   const setNodes = (updater: React.SetStateAction<Node<any>[]>) => {
-    setNodesRaw((prev) => {
-      const next = typeof updater === "function" ? (updater as any)(prev) : updater
-      pushHistory(next, edges)
-      setIsSaved(false)
-      return next
-    })
+    const next = typeof updater === "function" ? (updater as any)(nodesRef.current) : updater
+    nodesRef.current = next
+    pushHistory(next, edgesRef.current)
+    setIsSaved(false)
+    setNodesRaw(next)
   }
 
   const setEdges = (updater: React.SetStateAction<Edge<any>[]>) => {
-    setEdgesRaw((prev) => {
-      const next = typeof updater === "function" ? (updater as any)(prev) : updater
-      pushHistory(nodes, next)
-      setIsSaved(false)
-      return next
-    })
+    const next = typeof updater === "function" ? (updater as any)(edgesRef.current) : updater
+    edgesRef.current = next
+    pushHistory(nodesRef.current, next)
+    setIsSaved(false)
+    setEdgesRaw(next)
   }
 
   /* ------------------------------
       Load / save / autosave
   ------------------------------ */
   useEffect(() => {
+    /** Load an untrusted payload (share link or localStorage) safely. */
+    function load(raw: unknown, source: string) {
+      const { diagram, notes } = sanitizeDiagram(raw)
+      if (notes.length > 0) {
+        console.warn(`Repaired diagram from ${source}:`, notes)
+      }
+      setNodesRaw(diagram.nodes as Node<any>[])
+      setEdgesRaw(diagram.edges as Edge<any>[])
+      if (diagram.name) setProjectName(diagram.name)
+      resetHistory({
+        nodes: diagram.nodes as Node<any>[],
+        edges: diagram.edges as Edge<any>[],
+      })
+      setIsSaved(true)
+    }
+
     try {
       const params = new URLSearchParams(window.location.search)
       const shared = params.get("d")
 
       if (shared) {
-        const payload = JSON.parse(LZString.decompressFromEncodedURIComponent(shared) || "{}")
-        setNodesRaw(payload.nodes || [])
-        setEdgesRaw(payload.edges || [])
-        if (payload.name) setProjectName(payload.name)
-
-        resetHistory({ nodes: payload.nodes || [], edges: payload.edges || [] })
-        setIsSaved(true)
+        const decompressed = LZString.decompressFromEncodedURIComponent(shared)
+        if (!decompressed) throw new Error("Share link is corrupt")
+        load(JSON.parse(decompressed), "share link")
         return
       }
 
@@ -172,10 +198,10 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (!raw) {
         const initialNodes = [
-          { id: "1", data: { label: "Web Server" }, position: { x: 250, y: 5 }, type: "nautilusNode" },
-          { id: "2", data: { label: "Database" }, position: { x: 250, y: 200 }, type: "nautilusNode" },
+          { id: "1", data: { label: "Web Server", icon: "web_server", color: "green" }, position: { x: 250, y: 5 }, type: "nautilusNode" },
+          { id: "2", data: { label: "Database", icon: "database_sql", color: "red" }, position: { x: 250, y: 200 }, type: "nautilusNode" },
         ]
-        const initialEdges = [{ id: "e1-2", source: "1", target: "2", animated: true }]
+        const initialEdges = [{ id: "e1-2", source: "1", target: "2", type: "deletableEdge", animated: true }]
         setNodesRaw(initialNodes)
         setEdgesRaw(initialEdges)
         resetHistory({ nodes: initialNodes, edges: initialEdges })
@@ -183,11 +209,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      const parsed = JSON.parse(raw)
-      setNodesRaw(parsed.nodes || [])
-      setEdgesRaw(parsed.edges || [])
-      resetHistory({ nodes: parsed.nodes || [], edges: parsed.edges || [] })
-      setIsSaved(true)
+      load(JSON.parse(raw), "local storage")
     } catch (err) {
       console.error("Failed to load canvas:", err)
     }
@@ -423,70 +445,37 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  /* ------------------------------
-      Window event bindings for toolbar / edit buttons
-  ------------------------------ */
-  useEffect(() => {
-    function onAlignLeft() { alignSelected("left") }
-    function onAlignCenter() { alignSelected("center") }
-    function onAlignRight() { alignSelected("right") }
-    function onDistributeH() { distributeHorizontally() }
-    function onGroup() { groupSelected() }
-    function onUngroup() { ungroupSelected() }
-    function onCopy() { copySelected() }
-    function onPaste() { pasteClipboard() }
-    function onDelete() { deleteSelected() }
-
-    window.addEventListener("nautilus-align-left", onAlignLeft)
-    window.addEventListener("nautilus-align-center", onAlignCenter)
-    window.addEventListener("nautilus-align-right", onAlignRight)
-    window.addEventListener("nautilus-distribute-h", onDistributeH)
-    window.addEventListener("nautilus-group", onGroup)
-    window.addEventListener("nautilus-ungroup", onUngroup)
-    window.addEventListener("nautilus-copy", onCopy)
-    window.addEventListener("nautilus-paste", onPaste)
-    window.addEventListener("nautilus-delete", onDelete)
-
-    return () => {
-      window.removeEventListener("nautilus-align-left", onAlignLeft)
-      window.removeEventListener("nautilus-align-center", onAlignCenter)
-      window.removeEventListener("nautilus-align-right", onAlignRight)
-      window.removeEventListener("nautilus-distribute-h", onDistributeH)
-      window.removeEventListener("nautilus-group", onGroup)
-      window.removeEventListener("nautilus-ungroup", onUngroup)
-      window.removeEventListener("nautilus-copy", onCopy)
-      window.removeEventListener("nautilus-paste", onPaste)
-      window.removeEventListener("nautilus-delete", onDelete)
-    }
-    // depend on nodes/edges to have fresh selection logic
-  }, [nodes, edges])
+  /*
+    Canvas-level operations (copy/paste/group/align/zoom) are handled in
+    components/canvas.tsx, which has access to measured node sizes. They used
+    to be bound here as well, so every toolbar click ran twice — pasting two
+    copies, deleting twice, and fighting over the grouping model.
+  */
 
   /* ------------------------------
-        Global import/run listeners (existing)
+        Global import listener
   ------------------------------ */
   useEffect(() => {
     function handleImport(e: any) {
-      const { nodes: importedNodes, edges: importedEdges, name } = e.detail
-      setNodesRaw(importedNodes)
-      setEdgesRaw(importedEdges)
-      if (name) setProjectName(name)
-      resetHistory({ nodes: importedNodes, edges: importedEdges })
-      setIsSaved(true)
-    }
-
-    function handleRunFlow() {
-      if (nodes.length === 0) {
-        return
+      try {
+        const { diagram } = sanitizeDiagram(e.detail)
+        setNodesRaw(diagram.nodes as Node<any>[])
+        setEdgesRaw(diagram.edges as Edge<any>[])
+        if (diagram.name) setProjectName(diagram.name)
+        resetHistory({
+          nodes: diagram.nodes as Node<any>[],
+          edges: diagram.edges as Edge<any>[],
+        })
+        setIsSaved(true)
+      } catch (err) {
+        console.error("Import rejected:", err)
       }
-      // toolbar shows toasts; run logic elsewhere
     }
 
     window.addEventListener("nautilus-import", handleImport)
-    window.addEventListener("nautilus-run", handleRunFlow)
 
     return () => {
       window.removeEventListener("nautilus-import", handleImport)
-      window.removeEventListener("nautilus-run", handleRunFlow)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

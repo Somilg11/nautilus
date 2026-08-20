@@ -1,4 +1,4 @@
-import { MarkerType } from "react-flow-renderer"
+import { MarkerType } from "reactflow"
 
 export const NetflixTemplate = {
     id: "netflix",
@@ -10,13 +10,23 @@ export const NetflixTemplate = {
             id: "client-tv",
             type: "nautilusNode",
             position: { x: 100, y: 0 },
-            data: { label: "Smart TV", icon: "client_web", color: "red" },
+            data: {
+                label: "Smart TV",
+                icon: "client_web",
+                color: "red",
+                sim: { latencyMs: 5 },
+            },
         },
         {
             id: "client-mobile",
             type: "nautilusNode",
             position: { x: 500, y: 0 },
-            data: { label: "Mobile App", icon: "client_mobile", color: "red" },
+            data: {
+                label: "Mobile App",
+                icon: "client_mobile",
+                color: "red",
+                sim: { latencyMs: 5 },
+            },
         },
 
         // Edge / CDN
@@ -24,7 +34,12 @@ export const NetflixTemplate = {
             id: "open-connect",
             type: "nautilusNode",
             position: { x: 300, y: 150 },
-            data: { label: "Open Connect (CDN)", icon: "cdn", color: "red" },
+            data: {
+                label: "Open Connect (CDN)",
+                icon: "cdn",
+                color: "red",
+                sim: { capacity: 250000, replicas: 4, latencyMs: 15, errorRate: 0.0002 },
+            },
         },
 
         // Backend Entry
@@ -32,7 +47,12 @@ export const NetflixTemplate = {
             id: "api-gateway",
             type: "nautilusNode",
             position: { x: 300, y: 300 },
-            data: { label: "Zuul Gateway", icon: "api_server", color: "purple" },
+            data: {
+                label: "Zuul Gateway",
+                icon: "api_server",
+                color: "purple",
+                sim: { capacity: 20000, replicas: 20, latencyMs: 8, errorRate: 0.001 },
+            },
         },
 
         // Microservices
@@ -40,19 +60,34 @@ export const NetflixTemplate = {
             id: "playback-service",
             type: "nautilusNode",
             position: { x: 100, y: 450 },
-            data: { label: "Playback Service", icon: "microservice", color: "blue" },
+            data: {
+                label: "Playback Service",
+                icon: "microservice",
+                color: "blue",
+                sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+            },
         },
         {
             id: "steering-service",
             type: "nautilusNode",
             position: { x: 300, y: 450 },
-            data: { label: "Steering Service", icon: "microservice", color: "blue" },
+            data: {
+                label: "Steering Service",
+                icon: "microservice",
+                color: "blue",
+                sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+            },
         },
         {
             id: "recommendation",
             type: "nautilusNode",
             position: { x: 500, y: 450 },
-            data: { label: "Recommendations", icon: "microservice", color: "blue" },
+            data: {
+                label: "Recommendations",
+                icon: "microservice",
+                color: "blue",
+                sim: { capacity: 1200, replicas: 40, latencyMs: 80, errorRate: 0.002 },
+            },
         },
 
         // Data Layer
@@ -60,19 +95,34 @@ export const NetflixTemplate = {
             id: "evcache",
             type: "nautilusNode",
             position: { x: 300, y: 600 },
-            data: { label: "EVCache (Memcached)", icon: "redis", color: "orange" },
+            data: {
+                label: "EVCache (Memcached)",
+                icon: "redis",
+                color: "orange",
+                sim: { capacity: 120000, replicas: 8, latencyMs: 1 },
+            },
         },
         {
             id: "cassandra",
             type: "nautilusNode",
             position: { x: 100, y: 750 },
-            data: { label: "Cassandra (User History)", icon: "cassandra", color: "red" },
+            data: {
+                label: "Cassandra (User History)",
+                icon: "cassandra",
+                color: "red",
+                sim: { capacity: 15000, replicas: 8, latencyMs: 6 },
+            },
         },
         {
             id: "mysql",
             type: "nautilusNode",
             position: { x: 500, y: 750 },
-            data: { label: "MySQL (Billing/Account)", icon: "mysql", color: "blue" },
+            data: {
+                label: "MySQL (Billing/Account)",
+                icon: "mysql",
+                color: "blue",
+                sim: { capacity: 6000, replicas: 8, latencyMs: 12, errorRate: 0.0005 },
+            },
         },
 
         // Async
@@ -80,13 +130,23 @@ export const NetflixTemplate = {
             id: "kafka",
             type: "nautilusNode",
             position: { x: 700, y: 450 },
-            data: { label: "Kafka (Data Pipeline)", icon: "kafka", color: "orange" },
+            data: {
+                label: "Kafka (Data Pipeline)",
+                icon: "kafka",
+                color: "orange",
+                sim: { capacity: 100000, replicas: 9, latencyMs: 3 },
+            },
         },
         {
             id: "spark",
             type: "nautilusNode",
             position: { x: 700, y: 600 },
-            data: { label: "Spark (Big Data)", icon: "elastic", color: "yellow" },
+            data: {
+                label: "Spark (Big Data)",
+                icon: "elastic",
+                color: "yellow",
+                sim: { capacity: 8000, replicas: 8, latencyMs: 30 },
+            },
         },
     ],
     edges: [
