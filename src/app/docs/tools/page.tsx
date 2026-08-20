@@ -1,6 +1,18 @@
 import { Callout, DocsPager, PageHeader, Section, Table } from "@/components/docs/ui"
 
-export const metadata = { title: "Editing tools — Nautilus Docs" }
+export const metadata = {
+  title: "Editing tools — Nautilus Docs",
+  description:
+    "Reference for the Nautilus editing toolbar: copy, group, align, distribute, and every other operation you can run on the canvas.",
+  alternates: { canonical: "/docs/tools" },
+  openGraph: {
+    title: "Editing tools — Nautilus Docs",
+    description:
+      "Reference for the Nautilus editing toolbar: copy, group, align, distribute, and every other operation you can run on the canvas.",
+    url: "/docs/tools",
+    type: "article",
+  },
+}
 
 export default function ToolsPage() {
   return (

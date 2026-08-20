@@ -1,7 +1,19 @@
 import Link from "next/link"
 import { CardLink, DocsPager, P, PageHeader, Section } from "@/components/docs/ui"
 
-export const metadata = { title: "Templates — Nautilus Docs" }
+export const metadata = {
+  title: "Templates — Nautilus Docs",
+  description:
+    "Load production-grade reference architectures in Nautilus — ready-made system designs you can open, edit and simulate.",
+  alternates: { canonical: "/docs/templates" },
+  openGraph: {
+    title: "Templates — Nautilus Docs",
+    description:
+      "Load production-grade reference architectures in Nautilus — ready-made system designs you can open, edit and simulate.",
+    url: "/docs/templates",
+    type: "article",
+  },
+}
 
 const TEMPLATES = [
   "Netflix", "Uber", "WhatsApp", "Instagram", "YouTube",

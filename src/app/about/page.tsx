@@ -17,6 +17,14 @@ export const metadata: Metadata = {
   title: "About — Nautilus",
   description:
     "Why Nautilus exists: an open-source, browser-only canvas for system design and load simulation — no accounts, no backend, no lock-in.",
+  alternates: { canonical: "/about" },
+  openGraph: {
+    title: "About — Nautilus",
+    description:
+      "Why Nautilus exists: an open-source, browser-only canvas for system design and load simulation — no accounts, no backend, no lock-in.",
+    url: "/about",
+    type: "article",
+  },
 }
 
 const PRINCIPLES = [

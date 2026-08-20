@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { GiNautilusShell } from "react-icons/gi";
 import { IconType } from "react-icons";
+import { GITHUB_URL, SITE_DESCRIPTION, SITE_NAME, absoluteUrl } from "@/lib/site";
 
 // Badge Component
 const TechBadge = ({ icon: Icon, label }: { icon: IconType; label: string }) => (
@@ -14,6 +15,37 @@ const TechBadge = ({ icon: Icon, label }: { icon: IconType; label: string }) => 
   </div>
 );
 
+/**
+ * Structured data so search engines can render a rich result for the app
+ * itself, and resolve the site-wide name/URL pair.
+ */
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": absoluteUrl("/#website"),
+      name: SITE_NAME,
+      url: absoluteUrl("/"),
+      description: SITE_DESCRIPTION,
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": absoluteUrl("/#app"),
+      name: SITE_NAME,
+      url: absoluteUrl("/"),
+      description: SITE_DESCRIPTION,
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Web browser, Windows, macOS, Linux",
+      isAccessibleForFree: true,
+      license: "https://opensource.org/licenses/MIT",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      author: { "@type": "Person", name: "Somil Gupta", url: "https://github.com/Somilg11" },
+      codeRepository: GITHUB_URL,
+    },
+  ],
+};
+
 export default function NautilusLanding() {
   // Shared class
   const cardStyle =
@@ -21,6 +53,10 @@ export default function NautilusLanding() {
 
   return (
     <div className="min-h-screen w-full bg-black text-white flex items-center justify-center p-4 md:p-8 font-sans">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
+      />
       {/* GRID CONFIGURATION:
         Mobile: 1 column, auto height rows (stacking)
         Desktop (lg): 4 columns, fixed 120px height rows (bento look)

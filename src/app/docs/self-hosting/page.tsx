@@ -1,6 +1,18 @@
 import { Callout, Code, CodeBlock, DocsPager, List, P, PageHeader, Section, Table } from "@/components/docs/ui"
 
-export const metadata = { title: "Self-hosting — Nautilus Docs" }
+export const metadata = {
+  title: "Self-hosting — Nautilus Docs",
+  description:
+    "Self-host Nautilus on anything that runs Node 20 — build it, deploy it and configure your own instance.",
+  alternates: { canonical: "/docs/self-hosting" },
+  openGraph: {
+    title: "Self-hosting — Nautilus Docs",
+    description:
+      "Self-host Nautilus on anything that runs Node 20 — build it, deploy it and configure your own instance.",
+    url: "/docs/self-hosting",
+    type: "article",
+  },
+}
 
 export default function SelfHostingPage() {
   return (

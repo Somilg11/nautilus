@@ -1,6 +1,18 @@
 import { Callout, CardLink, Code, CodeBlock, DocsPager, P, PageHeader, Section, Table } from "@/components/docs/ui"
 
-export const metadata = { title: "Contributing — Nautilus Docs" }
+export const metadata = {
+  title: "Contributing — Nautilus Docs",
+  description:
+    "Contribute to Nautilus — set up the repository locally, run the tests, find a first issue and open a pull request.",
+  alternates: { canonical: "/docs/contributing" },
+  openGraph: {
+    title: "Contributing — Nautilus Docs",
+    description:
+      "Contribute to Nautilus — set up the repository locally, run the tests, find a first issue and open a pull request.",
+    url: "/docs/contributing",
+    type: "article",
+  },
+}
 
 export default function ContributingPage() {
   return (

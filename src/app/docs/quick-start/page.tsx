@@ -1,7 +1,19 @@
 import Link from "next/link"
 import { Callout, DocsPager, PageHeader, Section, Steps } from "@/components/docs/ui"
 
-export const metadata = { title: "Quick start — Nautilus Docs" }
+export const metadata = {
+  title: "Quick start — Nautilus Docs",
+  description:
+    "Go from an empty Nautilus canvas to a running architecture simulation in five steps: drag components in, connect them, describe them, run it.",
+  alternates: { canonical: "/docs/quick-start" },
+  openGraph: {
+    title: "Quick start — Nautilus Docs",
+    description:
+      "Go from an empty Nautilus canvas to a running architecture simulation in five steps: drag components in, connect them, describe them, run it.",
+    url: "/docs/quick-start",
+    type: "article",
+  },
+}
 
 export default function QuickStartPage() {
   return (

@@ -1,6 +1,18 @@
 import { Callout, Code, CodeBlock, DocsPager, P, PageHeader, Section, Table } from "@/components/docs/ui"
 
-export const metadata = { title: "Sharing & export — Nautilus Docs" }
+export const metadata = {
+  title: "Sharing & export — Nautilus Docs",
+  description:
+    "Save and share Nautilus diagrams: autosave, JSON import and export, shareable links and PNG export.",
+  alternates: { canonical: "/docs/sharing" },
+  openGraph: {
+    title: "Sharing & export — Nautilus Docs",
+    description:
+      "Save and share Nautilus diagrams: autosave, JSON import and export, shareable links and PNG export.",
+    url: "/docs/sharing",
+    type: "article",
+  },
+}
 
 export default function SharingPage() {
   return (

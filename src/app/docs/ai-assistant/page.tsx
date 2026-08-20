@@ -1,6 +1,18 @@
 import { Callout, Code, DocsPager, List, P, PageHeader, Section, Steps, Table } from "@/components/docs/ui"
 
-export const metadata = { title: "AI assistant — Nautilus Docs" }
+export const metadata = {
+  title: "AI assistant — Nautilus Docs",
+  description:
+    "Use the Nautilus AI assistant with your own provider key to design, extend and review architecture diagrams. Keys never leave your browser.",
+  alternates: { canonical: "/docs/ai-assistant" },
+  openGraph: {
+    title: "AI assistant — Nautilus Docs",
+    description:
+      "Use the Nautilus AI assistant with your own provider key to design, extend and review architecture diagrams. Keys never leave your browser.",
+    url: "/docs/ai-assistant",
+    type: "article",
+  },
+}
 
 export default function AssistantPage() {
   return (

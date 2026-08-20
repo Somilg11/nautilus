@@ -1,6 +1,18 @@
 import { Callout, Code, CodeBlock, DocsPager, List, P, PageHeader, Section, Table } from "@/components/docs/ui"
 
-export const metadata = { title: "Flow simulation — Nautilus Docs" }
+export const metadata = {
+  title: "Flow simulation — Nautilus Docs",
+  description:
+    "Run flow simulations in Nautilus to watch requests traverse your architecture step by step and find bottlenecks before you build it.",
+  alternates: { canonical: "/docs/simulation" },
+  openGraph: {
+    title: "Flow simulation — Nautilus Docs",
+    description:
+      "Run flow simulations in Nautilus to watch requests traverse your architecture step by step and find bottlenecks before you build it.",
+    url: "/docs/simulation",
+    type: "article",
+  },
+}
 
 export default function SimulationPage() {
   return (

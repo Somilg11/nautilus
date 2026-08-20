@@ -1,6 +1,18 @@
 import { Code, CodeBlock, DocsPager, List, P, PageHeader, Section, Steps } from "@/components/docs/ui"
 
-export const metadata = { title: "Add a template — Nautilus Docs" }
+export const metadata = {
+  title: "Add a template — Nautilus Docs",
+  description:
+    "Add a new architecture template to Nautilus in a single file: create it, register it, and check it renders.",
+  alternates: { canonical: "/docs/add-template" },
+  openGraph: {
+    title: "Add a template — Nautilus Docs",
+    description:
+      "Add a new architecture template to Nautilus in a single file: create it, register it, and check it renders.",
+    url: "/docs/add-template",
+    type: "article",
+  },
+}
 
 export default function AddTemplatePage() {
   return (

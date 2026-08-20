@@ -8,7 +8,19 @@ import {
   Section,
 } from "@/components/docs/ui"
 
-export const metadata = { title: "Nautilus Docs" }
+export const metadata = {
+  title: "Nautilus Docs",
+  description:
+    "Nautilus documentation: what the browser-only system design canvas does, what it deliberately does not, and where to start.",
+  alternates: { canonical: "/docs" },
+  openGraph: {
+    title: "Nautilus Docs",
+    description:
+      "Nautilus documentation: what the browser-only system design canvas does, what it deliberately does not, and where to start.",
+    url: "/docs",
+    type: "article",
+  },
+}
 
 export default function DocsIntroPage() {
   const featured = DOCS_NAV.flatMap((g) => g.items).filter((p) =>

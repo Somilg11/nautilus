@@ -1,6 +1,18 @@
 import { Callout, CodeBlock, DocsPager, P, PageHeader, Section, Table } from "@/components/docs/ui"
 
-export const metadata = { title: "Desktop app — Nautilus Docs" }
+export const metadata = {
+  title: "Desktop app — Nautilus Docs",
+  description:
+    "Run Nautilus as a desktop app: one command for a native window, or a packaged build you can install.",
+  alternates: { canonical: "/docs/desktop" },
+  openGraph: {
+    title: "Desktop app — Nautilus Docs",
+    description:
+      "Run Nautilus as a desktop app: one command for a native window, or a packaged build you can install.",
+    url: "/docs/desktop",
+    type: "article",
+  },
+}
 
 export default function DesktopPage() {
   return (

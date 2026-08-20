@@ -1,6 +1,18 @@
 import { Callout, DocsPager, List, P, PageHeader, Section, Table } from "@/components/docs/ui"
 
-export const metadata = { title: "Building a diagram — Nautilus Docs" }
+export const metadata = {
+  title: "Building a diagram — Nautilus Docs",
+  description:
+    "How to build an architecture diagram in Nautilus: adding nodes, drawing edges, writing component descriptions and using the colour convention.",
+  alternates: { canonical: "/docs/building" },
+  openGraph: {
+    title: "Building a diagram — Nautilus Docs",
+    description:
+      "How to build an architecture diagram in Nautilus: adding nodes, drawing edges, writing component descriptions and using the colour convention.",
+    url: "/docs/building",
+    type: "article",
+  },
+}
 
 export default function BuildingPage() {
   return (

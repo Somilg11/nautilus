@@ -1,6 +1,18 @@
 import { DocsPager, Keys, P, PageHeader, Section, Table } from "@/components/docs/ui"
 
-export const metadata = { title: "Keyboard shortcuts — Nautilus Docs" }
+export const metadata = {
+  title: "Keyboard shortcuts — Nautilus Docs",
+  description:
+    "Every Nautilus keyboard shortcut, so you can build, edit and simulate an architecture diagram without touching the mouse.",
+  alternates: { canonical: "/docs/shortcuts" },
+  openGraph: {
+    title: "Keyboard shortcuts — Nautilus Docs",
+    description:
+      "Every Nautilus keyboard shortcut, so you can build, edit and simulate an architecture diagram without touching the mouse.",
+    url: "/docs/shortcuts",
+    type: "article",
+  },
+}
 
 export default function ShortcutsPage() {
   return (

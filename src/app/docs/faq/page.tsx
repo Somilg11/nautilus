@@ -1,6 +1,18 @@
 import { DocsPager, Faq, PageHeader, Section } from "@/components/docs/ui"
 
-export const metadata = { title: "FAQ — Nautilus Docs" }
+export const metadata = {
+  title: "FAQ — Nautilus Docs",
+  description:
+    "Short answers to the common Nautilus questions: data privacy, offline use, AI keys, exports and browser support.",
+  alternates: { canonical: "/docs/faq" },
+  openGraph: {
+    title: "FAQ — Nautilus Docs",
+    description:
+      "Short answers to the common Nautilus questions: data privacy, offline use, AI keys, exports and browser support.",
+    url: "/docs/faq",
+    type: "article",
+  },
+}
 
 export default function FaqPage() {
   return (

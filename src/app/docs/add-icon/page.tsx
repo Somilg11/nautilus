@@ -1,6 +1,18 @@
 import { Code, CodeBlock, DocsPager, List, PageHeader, Section } from "@/components/docs/ui"
 
-export const metadata = { title: "Add an icon — Nautilus Docs" }
+export const metadata = {
+  title: "Add an icon — Nautilus Docs",
+  description:
+    "Extend the Nautilus component library by adding a new icon and wiring it into the node palette.",
+  alternates: { canonical: "/docs/add-icon" },
+  openGraph: {
+    title: "Add an icon — Nautilus Docs",
+    description:
+      "Extend the Nautilus component library by adding a new icon and wiring it into the node palette.",
+    url: "/docs/add-icon",
+    type: "article",
+  },
+}
 
 export default function AddIconPage() {
   return (

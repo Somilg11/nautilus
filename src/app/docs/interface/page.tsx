@@ -1,6 +1,18 @@
 import { DocsPager, P, PageHeader, Section, Table } from "@/components/docs/ui"
 
-export const metadata = { title: "The interface — Nautilus Docs" }
+export const metadata = {
+  title: "The interface — Nautilus Docs",
+  description:
+    "A tour of every region of the Nautilus editor — toolbar, component sidebar, canvas and inspector — and what each one controls.",
+  alternates: { canonical: "/docs/interface" },
+  openGraph: {
+    title: "The interface — Nautilus Docs",
+    description:
+      "A tour of every region of the Nautilus editor — toolbar, component sidebar, canvas and inspector — and what each one controls.",
+    url: "/docs/interface",
+    type: "article",
+  },
+}
 
 export default function InterfacePage() {
   return (
