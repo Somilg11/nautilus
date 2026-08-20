@@ -96,6 +96,7 @@ export default function Toolbar({
     edges,
     projectName,
     setProjectName,
+    loadParams,
     undo,
     redo,
     canUndo,
@@ -117,7 +118,11 @@ export default function Toolbar({
         .replace(/^-+|-+$/g, "")
         .toLowerCase()
 
-      const json = JSON.stringify({ name: projectName, nodes, edges }, null, 2)
+      const json = JSON.stringify(
+        { name: projectName, nodes, edges, sim: loadParams },
+        null,
+        2
+      )
       const blob = new Blob([json], { type: "application/json" })
       const url = URL.createObjectURL(blob)
 
@@ -154,7 +159,12 @@ export default function Toolbar({
 
         window.dispatchEvent(
           new CustomEvent("nautilus-import", {
-            detail: { nodes: parsed.nodes, edges: parsed.edges, name: parsed.name },
+            detail: {
+              nodes: parsed.nodes,
+              edges: parsed.edges,
+              name: parsed.name,
+              sim: parsed.sim,
+            },
           })
         )
 
@@ -173,7 +183,7 @@ export default function Toolbar({
   /* ------------------------------- SHARE -------------------------------- */
   async function handleShare() {
     try {
-      const payload = JSON.stringify({ name: projectName, nodes, edges })
+      const payload = JSON.stringify({ name: projectName, nodes, edges, sim: loadParams })
       const compressed = LZString.compressToEncodedURIComponent(payload)
       const url = `${window.location.origin}/dashboard?d=${compressed}`
 

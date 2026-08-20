@@ -4,6 +4,9 @@ export const MicroservicesTemplate = {
   id: "microservices",
   name: "Microservices Architecture",
   description: "Event-driven microservices with API Gateway and Kafka",
+  // Playground defaults: the load this design is meant to serve.
+  sim: { requestsPerSecond: 8000, timeoutMs: 400, payloadKb: 8, targetUtilization: 0.7, burstFactor: 2 },
+
   nodes: [
     // Entry Point
     {
@@ -14,6 +17,7 @@ export const MicroservicesTemplate = {
         label: "Client App",
         icon: "client_web",
         color: "blue",
+        description: "Web or mobile client; talks only to the gateway, never to services",
         sim: { latencyMs: 5 },
       },
     },
@@ -25,7 +29,8 @@ export const MicroservicesTemplate = {
         label: "API Gateway (Kong)",
         icon: "load_balancer",
         color: "purple",
-        sim: { capacity: 20000, replicas: 2, latencyMs: 8 },
+        description: "Single entry point: routing, rate limiting, TLS termination, auth hand-off",
+        sim: { capacity: 20000, replicas: 2, latencyMs: 8, costPerHour: 0.03 },
       },
     },
 
@@ -38,7 +43,8 @@ export const MicroservicesTemplate = {
         label: "Auth Service",
         icon: "auth",
         color: "red",
-        sim: { capacity: 5000, replicas: 8, latencyMs: 40, errorRate: 0.001 },
+        description: "Issues and verifies tokens; every request passes through it",
+        sim: { capacity: 5000, replicas: 8, latencyMs: 40, errorRate: 0.001, costPerHour: 0.1 },
       },
     },
     {
@@ -49,7 +55,8 @@ export const MicroservicesTemplate = {
         label: "User Service",
         icon: "microservice",
         color: "green",
-        sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+        description: "Owns profiles and accounts, and its own database",
+        sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
       },
     },
     {
@@ -60,7 +67,8 @@ export const MicroservicesTemplate = {
         label: "Order Service",
         icon: "microservice",
         color: "green",
-        sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+        description: "Owns the order lifecycle and emits events on every state change",
+        sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
       },
     },
 
@@ -73,7 +81,8 @@ export const MicroservicesTemplate = {
         label: "Auth DB",
         icon: "redis",
         color: "red",
-        sim: { capacity: 120000, replicas: 3, latencyMs: 1 },
+        description: "Session and token store; short-lived keys with a TTL",
+        sim: { capacity: 120000, replicas: 3, latencyMs: 1, costPerHour: 0.14, hitRate: 0.9 },
       },
     },
     {
@@ -84,7 +93,8 @@ export const MicroservicesTemplate = {
         label: "User DB",
         icon: "postgres",
         color: "blue",
-        sim: { capacity: 6000, replicas: 3, latencyMs: 12, errorRate: 0.0005 },
+        description: "Relational store for user records, owned solely by the user service",
+        sim: { capacity: 6000, replicas: 3, latencyMs: 12, errorRate: 0.0005, costPerHour: 0.35 },
       },
     },
     {
@@ -95,7 +105,8 @@ export const MicroservicesTemplate = {
         label: "Order DB",
         icon: "mongodb",
         color: "green",
-        sim: { capacity: 12000, replicas: 3, latencyMs: 8 },
+        description: "Document store for orders, whose shape changes with the catalogue",
+        sim: { capacity: 12000, replicas: 3, latencyMs: 8, costPerHour: 0.3 },
       },
     },
 
@@ -108,7 +119,8 @@ export const MicroservicesTemplate = {
         label: "Event Bus (Kafka)",
         icon: "kafka",
         color: "orange",
-        sim: { capacity: 100000, replicas: 3, latencyMs: 3 },
+        description: "Durable event log decoupling producers from consumers",
+        sim: { capacity: 100000, replicas: 3, latencyMs: 3, costPerHour: 0.22 },
       },
     },
 
@@ -121,7 +133,8 @@ export const MicroservicesTemplate = {
         label: "Notification Service",
         icon: "microservice",
         color: "yellow",
-        sim: { capacity: 6000, replicas: 8, latencyMs: 60, errorRate: 0.004 },
+        description: "Consumes events and sends email, push and SMS",
+        sim: { capacity: 6000, replicas: 8, latencyMs: 60, errorRate: 0.004, costPerHour: 0.1 },
       },
     },
     {
@@ -132,7 +145,8 @@ export const MicroservicesTemplate = {
         label: "Analytics Service",
         icon: "microservice",
         color: "yellow",
-        sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+        description: "Consumes the same events to build reporting tables",
+        sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
       },
     },
   ],

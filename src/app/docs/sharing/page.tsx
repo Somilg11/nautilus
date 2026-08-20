@@ -61,7 +61,14 @@ export default function SharingPage() {
       "label": "cache miss",
       "data": { "sim": { "share": 0.15, "fanout": 1 } }
     }
-  ]
+  ],
+  "sim": {
+    "requestsPerSecond": 10000,
+    "timeoutMs": 500,
+    "payloadKb": 8,
+    "targetUtilization": 0.7,
+    "burstFactor": 2
+  }
 }`}
         />
 
@@ -89,14 +96,25 @@ export default function SharingPage() {
               ["sim.replicas", "node — identical instances", "1"],
               ["sim.latencyMs", "node — service time before queueing", "20"],
               ["sim.errorRate", "node — baseline failure rate, 0–1", "0"],
+              ["sim.down", "node — failure injection; the node serves nothing", "absent"],
+              ["sim.costPerHour", "node — price of one replica per hour", "0"],
+              ["sim.hitRate", "node — share answered here, not forwarded, 0–1", "0"],
+              ["sim.queue", "node — buffers past capacity instead of dropping", "auto by icon"],
               ["sim.share", "edge — fraction of requests taking this edge, 0–1", "1"],
               ["sim.fanout", "edge — calls made per request", "1"],
+              ["sim.async", "edge — fire-and-forget; latency past it leaves the request path", "auto into queues"],
             ]}
           />
           <P>
             These survive export, import, share links and autosave, so a diagram
             carries its capacity model with it. Missing fields fall back to the
             defaults above rather than to zero.
+          </P>
+          <P>
+            The top-level <Code>sim</Code> object holds the playground
+            parameters — offered load, timeout budget, payload size, target
+            utilisation and burst factor — so a shared link reproduces the exact
+            scenario instead of resetting to the defaults.
           </P>
         </Section>
 

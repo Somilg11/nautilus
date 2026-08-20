@@ -38,7 +38,7 @@ const PRINCIPLES = [
   {
     icon: <Play className="h-4 w-4" />,
     title: "Diagrams you can run",
-    body: "The canvas holds a real dependency graph, so it can be traced step by step — and loaded with traffic until something gives out.",
+    body: "The canvas holds a real dependency graph, so it can be traced step by step, loaded with traffic until something gives out, and priced.",
   },
 ]
 
@@ -57,7 +57,15 @@ const INSIDE = [
   },
   {
     label: "Load playground",
-    body: "Give nodes capacity, replicas, latency and error rates, then push traffic through and watch where it breaks.",
+    body: "Give nodes capacity, replicas, latency, error rates and a price, then push traffic through and watch where it breaks.",
+  },
+  {
+    label: "Capacity & cost",
+    body: "Replica counts sized to your target utilisation, the monthly bill that implies, and the cost per million requests.",
+  },
+  {
+    label: "Failure injection",
+    body: "Take a node out and see which paths die, where the traffic lands and what the success rate becomes.",
   },
   {
     label: "AI assistant",
@@ -125,8 +133,8 @@ export default function AboutPage() {
             <p className="max-w-[38rem] text-[16px] leading-7 text-muted-foreground">
               Nautilus is a browser-only canvas for designing, simulating and
               explaining software architecture. No accounts, no backend, no
-              lock-in — just a graph you can draw, run traffic through, share as
-              a file, and host yourself.
+              lock-in — just a graph you can draw, run traffic through, size and
+              price, share as a file, and host yourself.
             </p>
 
             <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -239,16 +247,33 @@ export default function AboutPage() {
             </p>
             <p className="text-[15px] leading-7 text-muted-foreground">
               The <strong className="text-foreground">load playground</strong>{" "}
-              goes further. Give each node a capacity, replica count, latency and
-              error rate, then set the offered traffic. Every node shows its
-              utilisation, served rate and queue-inflated latency, and the panel
-              names the bottleneck, the dropped traffic and the slowest path
-              against your timeout budget. Change a number and the whole picture
-              updates instantly.
+              goes further. Give each node a capacity, replica count, latency,
+              error rate and price, then set the offered traffic. Every node shows
+              its utilisation, served rate and queue-inflated latency, and the
+              panel names the bottleneck, the dropped traffic and the p95 of the
+              slowest path against your timeout budget. Change a number and the
+              whole picture updates instantly.
             </p>
-            <Button asChild variant="outline" size="sm" className="h-8 text-[13px]">
-              <Link href="/docs/simulation">How simulation works</Link>
-            </Button>
+            <p className="text-[15px] leading-7 text-muted-foreground">
+              It answers the questions a drawing cannot. The{" "}
+              <strong className="text-foreground">ramp</strong> sweeps the load
+              from zero and shows you the knee where the design gives out. The{" "}
+              <strong className="text-foreground">capacity plan</strong> sizes
+              every node to your target utilisation and prices the result —{" "}
+              <em>Payment Service 8 → 90 replicas, $1,050 → $11,800/mo</em>.{" "}
+              <strong className="text-foreground">Failure injection</strong> takes
+              a node out so you can watch what survives. Pin a baseline and every
+              later number arrives as a delta, with new bottlenecks called out by
+              name.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm" className="h-8 text-[13px]">
+                <Link href="/docs/simulation">How simulation works</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="h-8 text-[13px] text-muted-foreground">
+                <Link href="/docs/sharing">The file format</Link>
+              </Button>
+            </div>
           </div>
         </section>
 

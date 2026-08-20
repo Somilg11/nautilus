@@ -26,11 +26,15 @@ genuinely free and trivial to self-host.
 | | |
 | --- | --- |
 | **Flow simulation** | Watch data traverse the architecture step by step. Parallel branches light up together; cycles, dangling edges and isolated nodes are reported instead of failing silently. Play, pause, step and 0.5×–4× speed. |
+| **Load playground** | Give nodes capacity, replicas, latency, error rates and a price, then push traffic through. Live utilisation, queue-inflated p95 latency, dropped traffic, queue backlog and ranked bottlenecks. |
+| **Capacity & cost** | Replica counts sized to a target utilisation (`Payment Service 8 → 90`), the monthly bill that implies, and cost per million requests. Apply a suggestion with one click. |
+| **Load ramp** | Sweep from zero and plot offered vs delivered — the knee is where the design gives out, and the panel names the load where p95 first breaches your budget. |
+| **Failure injection** | Take a node out and watch what survives, where traffic lands and what the success rate becomes. Pin a baseline to see every change as a delta. |
 | **Component library** | Hundreds of searchable cloud, database, messaging, auth and DevOps icons, drag-and-drop onto the canvas. |
 | **Templates** | Netflix, Uber, WhatsApp, Instagram, YouTube, Spotify, Zomato, three-tier and microservices, ready to load and edit. |
 | **AI assistant** | Bring your own OpenAI, Gemini, Claude or Groq key. It sees your canvas, so it can design, extend, review or explain — and nothing is applied without your say-so. |
 | **Editing tools** | Group, ungroup, align, distribute, copy/paste, duplicate, nudge, undo/redo, plus keyboard shortcuts. |
-| **Sharing** | JSON export/import, PNG export, and self-contained share links that need no server. |
+| **Sharing** | JSON export/import, PNG export, self-contained share links, and a Markdown capacity report for design docs and PRs. |
 | **Runs anywhere** | Vercel, any Node host, a static CDN, one `npx` command, or a packaged desktop app. |
 | **Private by default** | The app makes no network calls of its own. No telemetry, no accounts, no server-side storage. |
 

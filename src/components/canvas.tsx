@@ -23,9 +23,10 @@ import NautilusNode from "@/components/nodes/NautilusNode"
 import SimulationPanel, { type LoadController } from "@/components/simulation-panel"
 import { useSimulation } from "@/lib/use-simulation"
 import {
-  DEFAULT_LOAD_PARAMS,
+  capacityReport,
   simulateLoad,
-  type LoadParams,
+  sweepLoad,
+  type SimulationReport,
 } from "@/lib/simulation-model"
 import "reactflow/dist/style.css"
 import "@/styles/canvas.css"
@@ -74,6 +75,9 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     reactFlowInstance,
     setReactFlowInstance,
     setSelectedNodeId,
+    projectName,
+    loadParams,
+    setLoadParams,
   } = useFlow()
 
   const sim = useSimulation(nodes, edges, {
@@ -88,19 +92,104 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
      numbers track edits live. Results are render-only, like trace marks.
   ------------------------------ */
   const [loadOn, setLoadOn] = React.useState(false)
-  const [loadParams, setLoadParams] = React.useState<LoadParams>(DEFAULT_LOAD_PARAMS)
+  /** Pinned run to compare against while tuning. */
+  const [baseline, setBaseline] = React.useState<SimulationReport | null>(null)
 
   const loadReport = useMemo(
     () => (loadOn ? simulateLoad(nodes as any, edges as any, loadParams) : null),
     [loadOn, nodes, edges, loadParams]
   )
 
+  // Sweeping runs the model ~24 times, so keep it off the typing path.
+  const ramp = useMemo(
+    () =>
+      loadOn
+        ? sweepLoad(nodes as any, edges as any, loadParams, {
+            maxRps: Math.max(1000, loadParams.requestsPerSecond * 2),
+          })
+        : null,
+    [loadOn, nodes, edges, loadParams]
+  )
+
+  /** Merge a patch into one node's `data.sim`, dropping emptied fields. */
+  const patchNodeSim = (id: string, patch: Record<string, unknown>) => {
+    setNodes((prev) =>
+      prev.map((n) => {
+        if (n.id !== id) return n
+        const sim = { ...(n.data?.sim ?? {}), ...patch }
+        Object.keys(sim).forEach((k) => {
+          if (sim[k] === undefined || sim[k] === false) delete sim[k]
+        })
+        return { ...n, data: { ...n.data, sim: Object.keys(sim).length ? sim : undefined } }
+      })
+    )
+  }
+
   const load: LoadController = {
     enabled: loadOn,
     params: loadParams,
     setParams: setLoadParams,
     report: loadReport,
+    ramp,
+    baseline,
     disable: () => setLoadOn(false),
+
+    pinBaseline: () => {
+      setBaseline(loadReport)
+      toast.success("Baseline pinned — changes now show as deltas")
+    },
+
+    clearBaseline: () => setBaseline(null),
+
+    copyReport: async () => {
+      if (!loadReport) return
+      try {
+        await navigator.clipboard.writeText(capacityReport(loadReport, projectName))
+        toast.success("Capacity report copied as Markdown")
+      } catch {
+        toast.error("Could not copy the report")
+      }
+    },
+
+
+    applyReplicas: (id, replicas) => {
+      patchNodeSim(id, { replicas })
+      toast.success(`Scaled ${loadReport?.metrics[id]?.label ?? id} to ${replicas} replicas`)
+    },
+
+    applyAllScaling: () => {
+      const advice = loadReport?.summary.scaleAdvice ?? []
+      if (advice.length === 0) return
+
+      const wanted = new Map(advice.map((a) => [a.id, a.required]))
+      setNodes((prev) =>
+        prev.map((n) =>
+          wanted.has(n.id)
+            ? { ...n, data: { ...n.data, sim: { ...(n.data?.sim ?? {}), replicas: wanted.get(n.id) } } }
+            : n
+        )
+      )
+      toast.success(`Scaled ${advice.length} node(s) to the target utilisation`)
+    },
+
+    toggleDown: (id) => {
+      const isDown = Boolean((nodes.find((n) => n.id === id)?.data?.sim as any)?.down)
+      patchNodeSim(id, { down: !isDown })
+    },
+
+    restoreAll: () => {
+      setNodes((prev) =>
+        prev.map((n) => {
+          const sim = n.data?.sim as Record<string, unknown> | undefined
+          if (!sim?.down) return n
+          const next = { ...sim }
+          delete next.down
+          return { ...n, data: { ...n.data, sim: Object.keys(next).length ? next : undefined } }
+        })
+      )
+      toast.success("All nodes restored")
+    },
+
     focusNode: (id: string) => {
       setSelectedNodeId(id)
       setNodes((prev) => prev.map((n) => ({ ...n, selected: n.id === id })))
@@ -613,16 +702,26 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     function onToggleLoad() {
       setLoadOn((v) => !v)
     }
+    // Fired by a node's context menu.
+    function onToggleNodeDown(e: Event) {
+      const id = (e as CustomEvent).detail?.id
+      if (!id) return
+      setLoadOn(true)
+      load.toggleDown(id)
+    }
 
     window.addEventListener("nautilus-run", onRunFlow)
     window.addEventListener("nautilus-run-stop", onStopFlow)
     window.addEventListener("nautilus-load-toggle", onToggleLoad)
+    window.addEventListener("nautilus-node-failure", onToggleNodeDown)
     return () => {
       window.removeEventListener("nautilus-run", onRunFlow)
       window.removeEventListener("nautilus-run-stop", onStopFlow)
       window.removeEventListener("nautilus-load-toggle", onToggleLoad)
+      window.removeEventListener("nautilus-node-failure", onToggleNodeDown)
     }
-  }, [sim.start, sim.stop])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sim.start, sim.stop, nodes])
 
   // Let the toolbar mirror the run state without owning it.
   useEffect(() => {

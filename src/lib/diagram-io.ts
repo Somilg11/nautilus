@@ -39,6 +39,8 @@ export type Diagram = {
   name?: string
   nodes: DiagramNode[]
   edges: DiagramEdge[]
+  /** Load playground parameters saved with the diagram. */
+  sim?: Record<string, number>
 }
 
 const ALLOWED_NODE_TYPES = new Set(["nautilusNode", "groupNode"])
@@ -74,10 +76,10 @@ function simNumber(value: unknown, max: number): number | undefined {
 }
 
 /** Node capacity model. Undefined fields fall back to the engine defaults. */
-function sanitizeNodeSim(raw: any): Record<string, number> | undefined {
+function sanitizeNodeSim(raw: any): Record<string, number | boolean> | undefined {
   if (!raw || typeof raw !== "object") return undefined
 
-  const sim: Record<string, number> = {}
+  const sim: Record<string, number | boolean> = {}
   const capacity = simNumber(raw.capacity, 10_000_000)
   const replicas = simNumber(raw.replicas, 10_000)
   const latencyMs = simNumber(raw.latencyMs, 600_000)
@@ -87,20 +89,53 @@ function sanitizeNodeSim(raw: any): Record<string, number> | undefined {
   if (replicas !== undefined) sim.replicas = Math.max(1, Math.round(replicas))
   if (latencyMs !== undefined) sim.latencyMs = latencyMs
   if (errorRate !== undefined) sim.errorRate = errorRate
+  if (raw.down === true) sim.down = true
+
+  const costPerHour = simNumber(raw.costPerHour, 1_000_000)
+  const hitRate = simNumber(raw.hitRate, 1)
+  if (costPerHour !== undefined) sim.costPerHour = costPerHour
+  if (hitRate !== undefined) sim.hitRate = hitRate
+  if (typeof raw.queue === "boolean") sim.queue = raw.queue
 
   return Object.keys(sim).length > 0 ? sim : undefined
 }
 
-/** Edge routing model. */
-function sanitizeEdgeSim(raw: any): Record<string, number> | undefined {
+/**
+ * Playground parameters travel with the diagram, so a shared link reproduces
+ * the exact scenario rather than resetting to the defaults.
+ */
+function sanitizeLoadParams(raw: any): Record<string, number> | undefined {
   if (!raw || typeof raw !== "object") return undefined
 
-  const sim: Record<string, number> = {}
+  const params: Record<string, number> = {}
+  const requestsPerSecond = simNumber(raw.requestsPerSecond, 100_000_000)
+  const timeoutMs = simNumber(raw.timeoutMs, 600_000)
+  const payloadKb = simNumber(raw.payloadKb, 1_000_000)
+  const targetUtilization = simNumber(raw.targetUtilization, 1)
+  const burstFactor = simNumber(raw.burstFactor, 100)
+
+  if (requestsPerSecond !== undefined) params.requestsPerSecond = requestsPerSecond
+  if (timeoutMs !== undefined && timeoutMs > 0) params.timeoutMs = timeoutMs
+  if (payloadKb !== undefined) params.payloadKb = payloadKb
+  if (targetUtilization !== undefined && targetUtilization > 0) {
+    params.targetUtilization = targetUtilization
+  }
+  if (burstFactor !== undefined && burstFactor > 0) params.burstFactor = burstFactor
+
+  return Object.keys(params).length > 0 ? params : undefined
+}
+
+/** Edge routing model. */
+function sanitizeEdgeSim(raw: any): Record<string, number | boolean> | undefined {
+  if (!raw || typeof raw !== "object") return undefined
+
+  const sim: Record<string, number | boolean> = {}
   const share = simNumber(raw.share, 1)
   const fanout = simNumber(raw.fanout, 1000)
 
   if (share !== undefined) sim.share = share
   if (fanout !== undefined) sim.fanout = fanout
+  if (typeof raw.async === "boolean") sim.async = raw.async
 
   return Object.keys(sim).length > 0 ? sim : undefined
 }
@@ -236,7 +271,12 @@ export function sanitizeDiagram(raw: any): SanitizeResult {
   }
 
   return {
-    diagram: { name: str(raw.name, 120), nodes, edges },
+    diagram: {
+      name: str(raw.name, 120),
+      nodes,
+      edges,
+      sim: sanitizeLoadParams(raw.sim),
+    },
     notes,
   }
 }

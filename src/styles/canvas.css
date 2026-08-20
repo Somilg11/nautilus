@@ -97,3 +97,10 @@
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.8) !important;
   border-color: rgba(239, 68, 68, 0.9) !important;
 }
+
+/* Node taken out by failure injection */
+.sim-node-down {
+  border-style: dashed !important;
+  border-color: rgba(239, 68, 68, 0.9) !important;
+  opacity: 0.65;
+}

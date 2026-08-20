@@ -4,6 +4,9 @@ export const SpotifyTemplate = {
   id: "spotify",
   name: "Spotify Architecture",
   description: "Music streaming with low latency and high availability",
+  // Playground defaults: the load this design is meant to serve.
+  sim: { requestsPerSecond: 20000, timeoutMs: 400, payloadKb: 32, targetUtilization: 0.65, burstFactor: 1.8 },
+
   nodes: [
     // Clients
     {
@@ -14,6 +17,7 @@ export const SpotifyTemplate = {
         label: "Mobile App",
         icon: "client_mobile",
         color: "green",
+        description: "Mobile player; streams audio and syncs playlists offline",
         sim: { latencyMs: 5 },
       },
     },
@@ -25,6 +29,7 @@ export const SpotifyTemplate = {
         label: "Desktop App",
         icon: "client_web",
         color: "green",
+        description: "Desktop player sharing the same backend APIs",
         sim: { latencyMs: 5 },
       },
     },
@@ -38,7 +43,8 @@ export const SpotifyTemplate = {
         label: "Access Point (Gateway)",
         icon: "api_server",
         color: "black",
-        sim: { capacity: 20000, replicas: 6, latencyMs: 8, errorRate: 0.001 },
+        description: "Long-lived gateway connection that multiplexes every client call",
+        sim: { capacity: 20000, replicas: 6, latencyMs: 8, errorRate: 0.001, costPerHour: 0.12 },
       },
     },
 
@@ -51,7 +57,8 @@ export const SpotifyTemplate = {
         label: "CDN (Audio Files)",
         icon: "cdn",
         color: "orange",
-        sim: { capacity: 250000, replicas: 2, latencyMs: 15, errorRate: 0.0002 },
+        description: "Delivers encoded audio chunks from the edge; origin sees only misses",
+        sim: { capacity: 250000, replicas: 2, latencyMs: 15, errorRate: 0.0002, costPerHour: 0.09, hitRate: 0.95 },
       },
     },
 
@@ -64,7 +71,8 @@ export const SpotifyTemplate = {
         label: "Playlist Service",
         icon: "microservice",
         color: "blue",
-        sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+        description: "Reads and writes playlists, the most-hit endpoint in the product",
+        sim: { capacity: 2500, replicas: 23, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
       },
     },
     {
@@ -75,7 +83,8 @@ export const SpotifyTemplate = {
         label: "Search Service",
         icon: "microservice",
         color: "blue",
-        sim: { capacity: 8000, replicas: 8, latencyMs: 30, errorRate: 0.002 },
+        description: "Query parsing and ranking over the catalogue index",
+        sim: { capacity: 8000, replicas: 8, latencyMs: 30, errorRate: 0.002, costPerHour: 0.1 },
       },
     },
     {
@@ -86,7 +95,8 @@ export const SpotifyTemplate = {
         label: "Player Service",
         icon: "microservice",
         color: "blue",
-        sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+        description: "Tracks playback position, licensing and what to play next",
+        sim: { capacity: 2500, replicas: 23, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
       },
     },
 
@@ -99,7 +109,8 @@ export const SpotifyTemplate = {
         label: "Cassandra Cluster",
         icon: "cassandra",
         color: "red",
-        sim: { capacity: 15000, replicas: 3, latencyMs: 6 },
+        description: "Wide-column store for playlists and listening history at scale",
+        sim: { capacity: 15000, replicas: 4, latencyMs: 6, costPerHour: 0.28 },
       },
     },
     {
@@ -110,7 +121,8 @@ export const SpotifyTemplate = {
         label: "Elasticsearch",
         icon: "elastic",
         color: "yellow",
-        sim: { capacity: 8000, replicas: 3, latencyMs: 30 },
+        description: "Inverted index powering catalogue search and autocomplete",
+        sim: { capacity: 8000, replicas: 7, latencyMs: 30, costPerHour: 0.32 },
       },
     },
 
@@ -123,7 +135,8 @@ export const SpotifyTemplate = {
         label: "Log Aggregation (Kafka)",
         icon: "kafka",
         color: "orange",
-        sim: { capacity: 100000, replicas: 3, latencyMs: 3 },
+        description: "Collects playback and interaction events for downstream analytics",
+        sim: { capacity: 100000, replicas: 3, latencyMs: 3, costPerHour: 0.22 },
       },
     },
     {
@@ -134,7 +147,8 @@ export const SpotifyTemplate = {
         label: "Hadoop (Analytics)",
         icon: "database_sql",
         color: "yellow",
-        sim: { capacity: 6000, replicas: 3, latencyMs: 12, errorRate: 0.0005 },
+        description: "Batch analytics over the event log; feeds recommendations",
+        sim: { capacity: 6000, replicas: 10, latencyMs: 12, errorRate: 0.0005, costPerHour: 0.35 },
       },
     },
   ],

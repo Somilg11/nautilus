@@ -56,3 +56,84 @@ describe("sanitizeDiagram", () => {
     expect(diagram.nodes[0].data.color).toBe("default")
   })
 })
+
+describe("round trip", () => {
+  it("preserves the whole simulation model through export and import", () => {
+    // Exactly what the toolbar writes to a .json file.
+    const exported = {
+      name: "Payments",
+      nodes: [
+        {
+          id: "api",
+          type: "nautilusNode",
+          position: { x: 10, y: 20 },
+          data: {
+            label: "API",
+            icon: "api_server",
+            color: "green",
+            description: "Public surface",
+            sim: {
+              capacity: 4000,
+              replicas: 6,
+              latencyMs: 25,
+              errorRate: 0.001,
+              costPerHour: 0.12,
+              down: true,
+            },
+          },
+        },
+        {
+          id: "cache",
+          type: "nautilusNode",
+          position: { x: 10, y: 200 },
+          data: { label: "Cache", icon: "redis", sim: { capacity: 120000, hitRate: 0.9 } },
+        },
+      ],
+      edges: [
+        {
+          id: "e1",
+          source: "api",
+          target: "cache",
+          type: "deletableEdge",
+          data: { sim: { share: 0.15, fanout: 2 } },
+        },
+      ],
+      sim: {
+        requestsPerSecond: 10000,
+        timeoutMs: 250,
+        payloadKb: 16,
+        targetUtilization: 0.6,
+        burstFactor: 2,
+      },
+    }
+
+    const { diagram, notes } = sanitizeDiagram(exported)
+
+    expect(notes).toEqual([])
+    expect(diagram.nodes[0].data.sim).toEqual({
+      capacity: 4000,
+      replicas: 6,
+      latencyMs: 25,
+      errorRate: 0.001,
+      costPerHour: 0.12,
+      down: true,
+    })
+    expect(diagram.nodes[1].data.sim).toEqual({ capacity: 120000, hitRate: 0.9 })
+    expect(diagram.edges[0].data).toEqual({ sim: { share: 0.15, fanout: 2 } })
+    expect(diagram.sim).toEqual(exported.sim)
+
+    // Re-importing what we just produced must be a fixed point.
+    const again = sanitizeDiagram(diagram)
+    expect(again.diagram).toEqual(diagram)
+  })
+
+  it("rejects nonsense in the playground parameters", () => {
+    const { diagram } = sanitizeDiagram({
+      nodes: [],
+      edges: [],
+      sim: { requestsPerSecond: -5, timeoutMs: 0, burstFactor: "fast", targetUtilization: 0.5 },
+    })
+
+    expect(diagram.sim).toEqual({ targetUtilization: 0.5 })
+  })
+})

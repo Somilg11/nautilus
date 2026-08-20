@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { AllTemplates } from "../templates"
 import { sanitizeDiagram } from "../diagram-io"
 import { computeExecutionPlan } from "../flow-execution"
-import { simulateLoad } from "../simulation-model"
+import { simulateLoad, DEFAULT_LOAD_PARAMS } from "../simulation-model"
 
 /**
  * Templates are the first thing most people load, and they double as the
@@ -40,13 +40,31 @@ describe("built-in templates", () => {
   )
 
   it.each(AllTemplates.map((t) => [t.id, t] as const))(
+    "%s documents every node and ships its own load defaults",
+    (_id, template) => {
+      const { diagram } = sanitizeDiagram(template)
+
+      const undocumented = diagram.nodes
+        .filter((n) => !n.data.description)
+        .map((n) => n.data.label)
+      expect(undocumented).toEqual([])
+
+      // A template without playground defaults would load at whatever the
+      // previous diagram happened to use.
+      expect(diagram.sim?.requestsPerSecond).toBeGreaterThan(0)
+      expect(diagram.sim?.burstFactor).toBeGreaterThanOrEqual(1)
+    }
+  )
+
+  it.each(AllTemplates.map((t) => [t.id, t] as const))(
     "%s serves its rated load without saturating",
     (_id, template) => {
       const { diagram } = sanitizeDiagram(template)
+      // Run each template at the load it claims to be designed for, peak
+      // included — a template that cannot serve its own rated load is wrong.
       const report = simulateLoad(diagram.nodes, diagram.edges, {
-        requestsPerSecond: 1000,
-        timeoutMs: 500,
-        payloadKb: 8,
+        ...DEFAULT_LOAD_PARAMS,
+        ...diagram.sim,
       })
 
       // A template that drops traffic out of the box teaches the wrong thing.
@@ -54,6 +72,11 @@ describe("built-in templates", () => {
 
       // Only client nodes may be uncapped — they are traffic sources, not
       // services, so a capacity there would be meaningless.
+      // Templates ship sized for their own rated load, so nothing should be
+      // over budget or asking to be scaled out of the box.
+      expect(report.summary.breachesTimeout).toBe(false)
+      expect(report.summary.scaleAdvice).toEqual([])
+
       const uncappedServices = report.summary.unbounded.filter(
         (id) => !String(diagram.nodes.find((n) => n.id === id)?.data.icon ?? "").startsWith("client")
       )

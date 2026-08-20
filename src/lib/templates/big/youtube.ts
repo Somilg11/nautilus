@@ -4,6 +4,10 @@ export const YouTubeTemplate = {
     id: "youtube",
     name: "YouTube Architecture",
     description: "Video sharing platform with transcoding pipeline",
+    // Playground defaults: uploads per second, not views — this graph is
+  // the ingest path.
+    sim: { requestsPerSecond: 3000, timeoutMs: 800, payloadKb: 128, targetUtilization: 0.65, burstFactor: 2 },
+
     nodes: [
         // Client
         {
@@ -14,6 +18,7 @@ export const YouTubeTemplate = {
                 label: "User",
                 icon: "client_web",
                 color: "red",
+                description: "Uploads video and watches from the same client",
                 sim: { latencyMs: 5 },
             },
         },
@@ -27,7 +32,8 @@ export const YouTubeTemplate = {
                 label: "Web Server",
                 icon: "web_server",
                 color: "blue",
-                sim: { capacity: 8000, replicas: 20, latencyMs: 15 },
+                description: "Serves the watch page and the upload entry point",
+                sim: { capacity: 8000, replicas: 20, latencyMs: 15, costPerHour: 0.1 },
             },
         },
 
@@ -40,7 +46,8 @@ export const YouTubeTemplate = {
                 label: "Upload Service",
                 icon: "microservice",
                 color: "green",
-                sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+                description: "Accepts the raw file and hands off to processing",
+                sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
             },
         },
         {
@@ -51,7 +58,8 @@ export const YouTubeTemplate = {
                 label: "Raw Storage (S3)",
                 icon: "s3",
                 color: "orange",
-                sim: { capacity: 15000, replicas: 4, latencyMs: 45 },
+                description: "Holds the original upload until transcoding finishes",
+                sim: { capacity: 15000, replicas: 4, latencyMs: 45, costPerHour: 0.05 },
             },
         },
         {
@@ -62,7 +70,8 @@ export const YouTubeTemplate = {
                 label: "Transcoding Queue",
                 icon: "rabbitmq",
                 color: "purple",
-                sim: { capacity: 120, replicas: 120, latencyMs: 900, errorRate: 0.01 },
+                description: "Buffers upload jobs; a backlog here delays publishing, not requests",
+                sim: { capacity: 120, replicas: 120, latencyMs: 900, errorRate: 0.01, costPerHour: 0.16 },
             },
         },
         {
@@ -73,7 +82,8 @@ export const YouTubeTemplate = {
                 label: "Transcoder Workers",
                 icon: "microservice",
                 color: "yellow",
-                sim: { capacity: 120, replicas: 120, latencyMs: 900, errorRate: 0.01 },
+                description: "Workers encoding each upload into every resolution and codec",
+                sim: { capacity: 120, replicas: 120, latencyMs: 900, errorRate: 0.01, costPerHour: 0.1 },
             },
         },
         {
@@ -84,7 +94,8 @@ export const YouTubeTemplate = {
                 label: "Processed Storage",
                 icon: "s3",
                 color: "orange",
-                sim: { capacity: 15000, replicas: 4, latencyMs: 45 },
+                description: "Finished renditions, ready for the CDN to pull",
+                sim: { capacity: 15000, replicas: 4, latencyMs: 45, costPerHour: 0.05 },
             },
         },
 
@@ -97,7 +108,8 @@ export const YouTubeTemplate = {
                 label: "Metadata Service",
                 icon: "microservice",
                 color: "blue",
-                sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+                description: "Titles, descriptions, view counts and playback metadata",
+                sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
             },
         },
         {
@@ -108,7 +120,8 @@ export const YouTubeTemplate = {
                 label: "Metadata DB (Vitess)",
                 icon: "mysql",
                 color: "blue",
-                sim: { capacity: 6000, replicas: 8, latencyMs: 12, errorRate: 0.0005 },
+                description: "Sharded MySQL behind Vitess for metadata at scale",
+                sim: { capacity: 6000, replicas: 8, latencyMs: 12, errorRate: 0.0005, costPerHour: 0.35 },
             },
         },
         {
@@ -119,7 +132,8 @@ export const YouTubeTemplate = {
                 label: "Cache (Memcached)",
                 icon: "redis",
                 color: "red",
-                sim: { capacity: 120000, replicas: 8, latencyMs: 1 },
+                description: "Keeps hot metadata off the database on the watch path",
+                sim: { capacity: 120000, replicas: 8, latencyMs: 1, costPerHour: 0.14, hitRate: 0.9 },
             },
         },
         {
@@ -130,7 +144,8 @@ export const YouTubeTemplate = {
                 label: "CDN (Edge Locations)",
                 icon: "cdn",
                 color: "green",
-                sim: { capacity: 250000, replicas: 4, latencyMs: 15, errorRate: 0.0002 },
+                description: "Edge locations streaming video; the origin only sees cache misses",
+                sim: { capacity: 250000, replicas: 4, latencyMs: 15, errorRate: 0.0002, costPerHour: 0.09, hitRate: 0.95 },
             },
         },
     ],

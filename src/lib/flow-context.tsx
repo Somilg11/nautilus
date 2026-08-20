@@ -6,6 +6,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import type { Edge, Node, ReactFlowInstance } from "reactflow"
 import LZString from "lz-string"
 import { sanitizeDiagram } from "./diagram-io"
+import { DEFAULT_LOAD_PARAMS, type LoadParams } from "./simulation-model"
 
 type SelectionMode = "select" | "pan"
 
@@ -21,6 +22,10 @@ type FlowContextType = {
 
   projectName: string
   setProjectName: (name: string) => void
+
+  /** Load playground parameters; saved and shared with the diagram. */
+  loadParams: LoadParams
+  setLoadParams: (params: LoadParams) => void
 
   // history API
   undo: () => void
@@ -71,6 +76,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [projectName, setProjectName] = useState("Untitled Design")
+  const [loadParams, setLoadParams] = useState<LoadParams>(DEFAULT_LOAD_PARAMS)
 
   // selection mode (select/pan)
   const [selectionMode, setSelectionMode] = useState<SelectionMode>("select")
@@ -174,6 +180,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       setNodesRaw(diagram.nodes as Node<any>[])
       setEdgesRaw(diagram.edges as Edge<any>[])
       if (diagram.name) setProjectName(diagram.name)
+      if (diagram.sim) setLoadParams({ ...DEFAULT_LOAD_PARAMS, ...diagram.sim })
       resetHistory({
         nodes: diagram.nodes as Node<any>[],
         edges: diagram.edges as Edge<any>[],
@@ -222,7 +229,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     }
     saveTimeoutRef.current = window.setTimeout(() => {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodes, edges }))
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodes, edges, sim: loadParams }))
         setIsSaved(true)
         // transient saved indicator
         setTimeout(() => {
@@ -239,7 +246,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
         saveTimeoutRef.current = null
       }
     }
-  }, [nodes, edges])
+  }, [nodes, edges, loadParams])
 
   useEffect(() => {
     try {
@@ -462,6 +469,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
         setNodesRaw(diagram.nodes as Node<any>[])
         setEdgesRaw(diagram.edges as Edge<any>[])
         if (diagram.name) setProjectName(diagram.name)
+        if (diagram.sim) setLoadParams({ ...DEFAULT_LOAD_PARAMS, ...diagram.sim })
         resetHistory({
           nodes: diagram.nodes as Node<any>[],
           edges: diagram.edges as Edge<any>[],
@@ -495,6 +503,8 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       setSelectedNodeId,
       projectName,
       setProjectName,
+      loadParams,
+      setLoadParams,
       undo,
       redo,
       canUndo: canUndo(),
@@ -519,7 +529,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       zoomOut,
     }),
     // include minimal dependencies
-    [nodes, edges, reactFlowInstance, selectedNodeId, projectName, isSaved, selectionMode]
+    [nodes, edges, reactFlowInstance, selectedNodeId, projectName, loadParams, isSaved, selectionMode]
   )
 
   return <FlowContext.Provider value={value}>{children}</FlowContext.Provider>

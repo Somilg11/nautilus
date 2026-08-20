@@ -4,6 +4,9 @@ export const ThreeTierTemplate = {
   id: "three-tier",
   name: "Production 3-Tier Web App",
   description: "Scalable architecture with LB, Cache, and DB Replication",
+  // Playground defaults: the load this design is meant to serve.
+  sim: { requestsPerSecond: 5000, timeoutMs: 500, payloadKb: 12, targetUtilization: 0.7, burstFactor: 2 },
+
   nodes: [
     // Tier 1: Presentation / Client
     {
@@ -14,6 +17,7 @@ export const ThreeTierTemplate = {
         label: "Client (Browser/Mobile)",
         icon: "client_web",
         color: "blue",
+        description: "Browser or mobile app making HTTPS requests",
         sim: { latencyMs: 5 },
       },
     },
@@ -25,7 +29,8 @@ export const ThreeTierTemplate = {
         label: "DNS (Route53)",
         icon: "dns",
         color: "purple",
-        sim: { capacity: 200000, latencyMs: 3 },
+        description: "Resolves the domain and steers traffic to the nearest region",
+        sim: { capacity: 200000, latencyMs: 3, costPerHour: 0.01 },
       },
     },
     {
@@ -36,7 +41,8 @@ export const ThreeTierTemplate = {
         label: "CDN (Cloudflare)",
         icon: "cdn",
         color: "orange",
-        sim: { capacity: 250000, latencyMs: 15, errorRate: 0.0002 },
+        description: "Serves static assets from the edge so origin only sees dynamic traffic",
+        sim: { capacity: 250000, latencyMs: 15, errorRate: 0.0002, costPerHour: 0.09, hitRate: 0.95 },
       },
     },
 
@@ -49,7 +55,8 @@ export const ThreeTierTemplate = {
         label: "Load Balancer (Nginx)",
         icon: "load_balancer",
         color: "green",
-        sim: { capacity: 50000, latencyMs: 2 },
+        description: "Health-checks the pool and spreads requests evenly across web servers",
+        sim: { capacity: 50000, latencyMs: 2, costPerHour: 0.03 },
       },
     },
     {
@@ -60,7 +67,8 @@ export const ThreeTierTemplate = {
         label: "Web Server 1",
         icon: "web_server",
         color: "green",
-        sim: { capacity: 8000, replicas: 2, latencyMs: 15 },
+        description: "Stateless app server: renders pages and calls the data tier",
+        sim: { capacity: 8000, replicas: 2, latencyMs: 15, costPerHour: 0.1 },
       },
     },
     {
@@ -71,7 +79,8 @@ export const ThreeTierTemplate = {
         label: "Web Server 2",
         icon: "web_server",
         color: "green",
-        sim: { capacity: 8000, replicas: 2, latencyMs: 15 },
+        description: "Second instance of the same app server, for capacity and failover",
+        sim: { capacity: 8000, replicas: 2, latencyMs: 15, costPerHour: 0.1 },
       },
     },
 
@@ -84,7 +93,8 @@ export const ThreeTierTemplate = {
         label: "Cache (Redis)",
         icon: "redis",
         color: "red",
-        sim: { capacity: 120000, latencyMs: 1 },
+        description: "Read-through cache; absorbs ~90% of reads before they reach Postgres",
+        sim: { capacity: 120000, latencyMs: 1, costPerHour: 0.14, hitRate: 0.9 },
       },
     },
 
@@ -97,7 +107,8 @@ export const ThreeTierTemplate = {
         label: "Primary DB (Postgres)",
         icon: "postgres",
         color: "blue",
-        sim: { capacity: 6000, latencyMs: 12, errorRate: 0.0005 },
+        description: "Source of truth. Handles every write and streams changes to the replica",
+        sim: { capacity: 6000, latencyMs: 12, errorRate: 0.0005, costPerHour: 0.35 },
       },
     },
     {
@@ -108,7 +119,8 @@ export const ThreeTierTemplate = {
         label: "Read Replica",
         icon: "postgres",
         color: "blue",
-        sim: { capacity: 6000, latencyMs: 12, errorRate: 0.0005 },
+        description: "Read-only copy for reporting and read scaling; lags the primary slightly",
+        sim: { capacity: 6000, latencyMs: 12, errorRate: 0.0005, costPerHour: 0.35 },
       },
     },
   ],

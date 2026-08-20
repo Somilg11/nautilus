@@ -4,6 +4,9 @@ export const WhatsAppTemplate = {
     id: "whatsapp",
     name: "WhatsApp Architecture",
     description: "Real-time messaging with high concurrency (Erlang/Ejabberd)",
+    // Playground defaults: the load this design is meant to serve.
+    sim: { requestsPerSecond: 60000, timeoutMs: 500, payloadKb: 4, targetUtilization: 0.7, burstFactor: 1.5 },
+
     nodes: [
         // Clients
         {
@@ -14,6 +17,7 @@ export const WhatsAppTemplate = {
                 label: "User A",
                 icon: "client_mobile",
                 color: "green",
+                description: "Sender: a phone holding a persistent connection to the gateway",
                 sim: { latencyMs: 5 },
             },
         },
@@ -25,6 +29,7 @@ export const WhatsAppTemplate = {
                 label: "User B",
                 icon: "client_mobile",
                 color: "green",
+                description: "Recipient, connected the same way and possibly offline",
                 sim: { latencyMs: 5 },
             },
         },
@@ -38,7 +43,8 @@ export const WhatsAppTemplate = {
                 label: "Load Balancer",
                 icon: "load_balancer",
                 color: "blue",
-                sim: { capacity: 50000, replicas: 4, latencyMs: 2 },
+                description: "Spreads long-lived connections across the gateway fleet",
+                sim: { capacity: 50000, replicas: 4, latencyMs: 2, costPerHour: 0.03 },
             },
         },
 
@@ -51,7 +57,8 @@ export const WhatsAppTemplate = {
                 label: "Chat Gateway (Ejabberd)",
                 icon: "api_server",
                 color: "red",
-                sim: { capacity: 20000, replicas: 20, latencyMs: 8, errorRate: 0.001 },
+                description: "Erlang gateway holding millions of concurrent sockets",
+                sim: { capacity: 20000, replicas: 20, latencyMs: 8, errorRate: 0.001, costPerHour: 0.12 },
             },
         },
 
@@ -64,7 +71,8 @@ export const WhatsAppTemplate = {
                 label: "Auth Service",
                 icon: "auth",
                 color: "purple",
-                sim: { capacity: 5000, replicas: 40, latencyMs: 40, errorRate: 0.001 },
+                description: "Verifies devices and registers session keys on connect",
+                sim: { capacity: 5000, replicas: 40, latencyMs: 40, errorRate: 0.001, costPerHour: 0.1 },
             },
         },
         {
@@ -75,7 +83,8 @@ export const WhatsAppTemplate = {
                 label: "Group Service",
                 icon: "microservice",
                 color: "purple",
-                sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+                description: "Fans a group message out to every member",
+                sim: { capacity: 2500, replicas: 52, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
             },
         },
 
@@ -88,7 +97,8 @@ export const WhatsAppTemplate = {
                 label: "Mnesia (Session DB)",
                 icon: "redis",
                 color: "orange",
-                sim: { capacity: 120000, replicas: 8, latencyMs: 1 },
+                description: "In-memory session and presence store, co-located with the gateway",
+                sim: { capacity: 120000, replicas: 8, latencyMs: 1, costPerHour: 0.14, hitRate: 0.9 },
             },
         },
         {
@@ -99,7 +109,8 @@ export const WhatsAppTemplate = {
                 label: "Cassandra (Message Store)",
                 icon: "cassandra",
                 color: "blue",
-                sim: { capacity: 15000, replicas: 8, latencyMs: 6 },
+                description: "Durable message store for undelivered and historical messages",
+                sim: { capacity: 15000, replicas: 9, latencyMs: 6, costPerHour: 0.28 },
             },
         },
 
@@ -112,7 +123,8 @@ export const WhatsAppTemplate = {
                 label: "Media Server (HTTP)",
                 icon: "web_server",
                 color: "green",
-                sim: { capacity: 8000, replicas: 20, latencyMs: 15 },
+                description: "Handles photo, video and voice uploads outside the chat path",
+                sim: { capacity: 8000, replicas: 20, latencyMs: 15, costPerHour: 0.1 },
             },
         },
         {
@@ -123,7 +135,8 @@ export const WhatsAppTemplate = {
                 label: "Blob Storage",
                 icon: "s3",
                 color: "orange",
-                sim: { capacity: 15000, replicas: 4, latencyMs: 45 },
+                description: "Encrypted media blobs, referenced by the message record",
+                sim: { capacity: 15000, replicas: 5, latencyMs: 45, costPerHour: 0.05 },
             },
         },
     ],

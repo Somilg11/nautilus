@@ -52,6 +52,8 @@ function bgFor(color?: string) {
 /** Border treatment for the node's load status. */
 function loadClass(metrics?: NodeMetrics) {
   switch (metrics?.status) {
+    case "down":
+      return "sim-node-down"
     case "overloaded":
       return "sim-node-overloaded"
     case "saturated":
@@ -94,6 +96,12 @@ export default function NautilusNode({ id, data }: NautilusNodeProps) {
         },
       ]
     })
+  }
+
+  const toggleFailure = () => {
+    window.dispatchEvent(
+      new CustomEvent("nautilus-node-failure", { detail: { id } })
+    )
   }
 
   const editNode = () => {
@@ -152,16 +160,28 @@ export default function NautilusNode({ id, data }: NautilusNodeProps) {
               </div>
               <div className="flex items-center justify-between gap-2 text-[10px] leading-none text-muted-foreground">
                 <span className="font-medium text-foreground">
-                  {Math.round(data.__metrics.utilization * 100)}%
+                  {data.__metrics.down
+                    ? "DOWN"
+                    : `${Math.round(data.__metrics.utilization * 100)}%`}
                 </span>
                 <span>{formatRate(data.__metrics.accepted)}</span>
-                <span>{formatMs(data.__metrics.latencyMs)}</span>
+                <span title="p95 / average response time">
+                  p95 {formatMs(data.__metrics.p95Ms)}
+                </span>
               </div>
-              {data.__metrics.dropped > 0 && (
-                <div className="text-[10px] leading-none text-red-500">
-                  dropping {formatRate(data.__metrics.dropped)}
-                </div>
-              )}
+              <div className="flex items-center justify-between gap-2 text-[10px] leading-none">
+                <span className="text-muted-foreground">
+                  {data.__metrics.replicas}×
+                  {data.__metrics.requiredReplicas > data.__metrics.replicas && (
+                    <span className="text-primary"> → {data.__metrics.requiredReplicas}×</span>
+                  )}
+                </span>
+                {data.__metrics.dropped > 0 && (
+                  <span className="text-red-500">
+                    dropping {formatRate(data.__metrics.dropped)}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
@@ -171,9 +191,12 @@ export default function NautilusNode({ id, data }: NautilusNodeProps) {
         </div>
       </ContextMenuTrigger>
 
-      <ContextMenuContent className="w-40">
+      <ContextMenuContent className="w-48">
         <ContextMenuItem onClick={editNode}>Edit</ContextMenuItem>
         <ContextMenuItem onClick={duplicateNode}>Duplicate</ContextMenuItem>
+        <ContextMenuItem onClick={toggleFailure}>
+          {data.__metrics?.down ? "Restore node" : "Simulate failure"}
+        </ContextMenuItem>
         <ContextMenuItem onClick={deleteNode} className="text-red-500">
           Delete
         </ContextMenuItem>

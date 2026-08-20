@@ -79,6 +79,9 @@ step 3   db                ← only after both APIs have run`}
             ["Replicas", "Identical instances. Total capacity is capacity × replicas."],
             ["Latency (ms)", "Service time at low utilisation, before queueing."],
             ["Error rate (%)", "Baseline failures, independent of overload."],
+            ["Cost / hour ($)", "Price of one replica per hour. Monthly cost is cost × replicas × 730."],
+            ["Cache hit (%)", "Share answered here and not forwarded, so a backing store only sees the misses."],
+            ["Failure", "Failure injection — the node serves nothing until restored."],
           ]}
         />
 
@@ -86,8 +89,10 @@ step 3   db                ← only after both APIs have run`}
           head={["Global parameter", "Meaning"]}
           rows={[
             ["Load (req/s)", "Total offered traffic, split evenly across entry points."],
-            ["Timeout (ms)", "End-to-end budget. The slowest path is checked against it."],
+            ["Timeout (ms)", "End-to-end budget. The slowest path's p95 is checked against it."],
             ["Payload (KB)", "Average response size, used for the bandwidth estimate."],
+            ["Target util (%)", "Utilisation to size for. Capacity advice keeps every node at or below it; 70% leaves headroom for bursts and failover."],
+            ["Burst ×", "Peak-to-average multiplier. Capacity has to survive the peak, so the offered load is sized as load × burst."],
           ]}
         />
 
@@ -107,6 +112,131 @@ step 3   db                ← only after both APIs have run`}
             ["Slowest path", "Worst entry-to-exit latency, queueing included, checked against your timeout."],
           ]}
         />
+
+        <Section title="Capacity plan">
+          <P>
+            Whenever a node would run hotter than the target, the panel proposes
+            a replica count: <em>Payment Service 8 → 90</em>. Click a suggestion
+            to apply it to that node, or <em>Apply all</em> to size the whole
+            design at once. The same suggestion appears in Properties ▸
+            Simulation for the selected node.
+          </P>
+          <Callout title="Sized against demand, not throttled traffic">
+            Advice uses what a node <em>would</em> receive with nothing upstream
+            shedding load. Otherwise a saturated gateway would hide the demand on
+            everything behind it, and you would scale the front door only to
+            uncover the same problem one hop deeper.
+          </Callout>
+        </Section>
+
+        <Section title="Load ramp">
+          <P>
+            Dragging the slider answers &ldquo;what happens at 50k?&rdquo;. The{" "}
+            <strong>Ramp</strong> tab answers the more useful question:{" "}
+            <em>where does this design stop working?</em> It sweeps the load from
+            zero to twice the current setting and plots offered against
+            delivered.
+          </P>
+          <P>
+            While the two lines track each other the design is keeping up. Where
+            delivered flattens out is the <strong>knee</strong> — the red marker —
+            and the shaded gap past it is shed traffic. The panel also reports the
+            highest load still served cleanly, and the load at which the p95 first
+            breaches your timeout budget, which usually arrives before the knee.
+            Click anywhere on the curve to run the design at that load.
+          </P>
+        </Section>
+
+        <Section title="Cost">
+          <P>
+            Give nodes a price per instance-hour and the panel reports the
+            monthly cost of the design, the cost per million delivered requests,
+            and — next to the capacity plan — what applying that plan would do to
+            the bill. All built-in templates ship with rough cloud list prices,
+            so a template tells you what it would cost to run at a given load.
+          </P>
+          <Callout title="Capacity and cost together">
+            A capacity plan without a price is half an answer. &ldquo;Payment
+            Service 8 → 90 replicas&rdquo; reads differently once it says{" "}
+            <em>$1,050 → $11,800/mo</em> beside it.
+          </Callout>
+        </Section>
+
+        <Section title="Requests versus pipelines">
+          <P>
+            Publishing to a queue is a hand-off, not a call: the producer&apos;s
+            request ends there. Nautilus treats any edge into a buffering node as
+            asynchronous, so a slow consumer never inflates the latency of the
+            request that triggered it. Set <Code>sim.async</Code> on any other
+            edge to say the same thing about a fire-and-forget call.
+          </P>
+          <P>
+            The timeout budget is checked against the{" "}
+            <strong>request path</strong> only. Work behind a hand-off is reported
+            separately as a <strong>background pipeline</strong> — YouTube&apos;s
+            watch path is 142ms while its transcoding pipeline takes about seven
+            seconds, and both numbers are correct.
+          </P>
+        </Section>
+
+        <Section title="Queues buffer, they don't shed">
+          <P>
+            A queue past its capacity does not drop traffic — it falls behind.
+            Nodes marked as buffering report the overload as{" "}
+            <strong>backlog growth</strong> in requests per second rather than as
+            drops, which is what a growing consumer lag actually looks like.
+            Kafka, RabbitMQ, SQS and generic queue icons are treated this way
+            automatically; anything else can opt in with{" "}
+            <Code>sim.queue</Code>.
+          </P>
+        </Section>
+
+        <Section title="Baselines and reports">
+          <P>
+            <strong>Pin baseline</strong> freezes the current run. Every number
+            then shows its delta, and the diff line names bottlenecks that
+            appeared or cleared — which is usually where a tuning pass goes wrong.
+          </P>
+          <P>
+            <strong>Copy report</strong> puts a Markdown capacity summary on the
+            clipboard: parameters, throughput, p95, cost, critical path,
+            bottlenecks and the capacity plan. Paste it into a design doc or a
+            pull request.
+          </P>
+        </Section>
+
+        <Section title="Failure injection">
+          <P>
+            Right-click any node and choose <strong>Simulate failure</strong> (or
+            use the button in Properties ▸ Simulation). The node stops serving:
+            everything arriving is shed, nothing is forwarded, and the panel shows
+            what the rest of the design does about it — which paths die, where
+            the load lands, and what the success rate drops to.
+          </P>
+          <P>
+            Downed nodes are drawn dashed and dimmed, listed in the panel, and
+            restored individually or all at once. The flag lives in{" "}
+            <Code>data.sim.down</Code>, so a &ldquo;what if this region is
+            gone&rdquo; scenario can be exported and shared like any other
+            diagram.
+          </P>
+        </Section>
+
+        <Section title="Latency: p95, not just the average">
+          <P>
+            Service time in a queue is not a fixed number, so Nautilus reports
+            both. Per hop, response time is treated as exponentially distributed,
+            which puts the 95th percentile at about 3× the mean. Along a path the
+            hops are combined statistically rather than by adding their
+            percentiles — the p95 of a chain is well below the sum of each hop&apos;s
+            p95, because they rarely all go slow at once.
+          </P>
+          <P>
+            The timeout check uses the p95. A design whose average fits the budget
+            but whose p95 does not is a design that times out for a noticeable
+            slice of real users.
+          </P>
+        </Section>
 
         <Section title="How the numbers are produced">
           <List

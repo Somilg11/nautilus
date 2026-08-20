@@ -4,6 +4,9 @@ export const NetflixTemplate = {
     id: "netflix",
     name: "Netflix Architecture",
     description: "Video streaming at massive scale with Open Connect",
+    // Playground defaults: the load this design is meant to serve.
+    sim: { requestsPerSecond: 50000, timeoutMs: 800, payloadKb: 48, targetUtilization: 0.65, burstFactor: 1.8 },
+
     nodes: [
         // Clients
         {
@@ -14,6 +17,7 @@ export const NetflixTemplate = {
                 label: "Smart TV",
                 icon: "client_web",
                 color: "red",
+                description: "Smart TV app: the majority of streaming hours",
                 sim: { latencyMs: 5 },
             },
         },
@@ -25,6 +29,7 @@ export const NetflixTemplate = {
                 label: "Mobile App",
                 icon: "client_mobile",
                 color: "red",
+                description: "Mobile app using the same APIs with different bitrates",
                 sim: { latencyMs: 5 },
             },
         },
@@ -38,7 +43,8 @@ export const NetflixTemplate = {
                 label: "Open Connect (CDN)",
                 icon: "cdn",
                 color: "red",
-                sim: { capacity: 250000, replicas: 4, latencyMs: 15, errorRate: 0.0002 },
+                description: "Netflix-operated CDN appliances inside ISP networks",
+                sim: { capacity: 250000, replicas: 4, latencyMs: 15, errorRate: 0.0002, costPerHour: 0.09, hitRate: 0.95 },
             },
         },
 
@@ -51,7 +57,8 @@ export const NetflixTemplate = {
                 label: "Zuul Gateway",
                 icon: "api_server",
                 color: "purple",
-                sim: { capacity: 20000, replicas: 20, latencyMs: 8, errorRate: 0.001 },
+                description: "Zuul: routing, auth and per-device request shaping",
+                sim: { capacity: 20000, replicas: 20, latencyMs: 8, errorRate: 0.001, costPerHour: 0.12 },
             },
         },
 
@@ -64,7 +71,8 @@ export const NetflixTemplate = {
                 label: "Playback Service",
                 icon: "microservice",
                 color: "blue",
-                sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+                description: "Authorises playback and issues streaming licences",
+                sim: { capacity: 2500, replicas: 56, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
             },
         },
         {
@@ -75,7 +83,8 @@ export const NetflixTemplate = {
                 label: "Steering Service",
                 icon: "microservice",
                 color: "blue",
-                sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+                description: "Picks the best Open Connect server for each client",
+                sim: { capacity: 2500, replicas: 56, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
             },
         },
         {
@@ -86,7 +95,8 @@ export const NetflixTemplate = {
                 label: "Recommendations",
                 icon: "microservice",
                 color: "blue",
-                sim: { capacity: 1200, replicas: 40, latencyMs: 80, errorRate: 0.002 },
+                description: "Ranks rows and titles for the home screen",
+                sim: { capacity: 1200, replicas: 116, latencyMs: 80, errorRate: 0.002, costPerHour: 0.1 },
             },
         },
 
@@ -99,7 +109,8 @@ export const NetflixTemplate = {
                 label: "EVCache (Memcached)",
                 icon: "redis",
                 color: "orange",
-                sim: { capacity: 120000, replicas: 8, latencyMs: 1 },
+                description: "Distributed memcached tier absorbing most metadata reads",
+                sim: { capacity: 120000, replicas: 8, latencyMs: 1, costPerHour: 0.14, hitRate: 0.9 },
             },
         },
         {
@@ -110,7 +121,8 @@ export const NetflixTemplate = {
                 label: "Cassandra (User History)",
                 icon: "cassandra",
                 color: "red",
-                sim: { capacity: 15000, replicas: 8, latencyMs: 6 },
+                description: "Viewing history and user state, written on every playback event",
+                sim: { capacity: 15000, replicas: 10, latencyMs: 6, costPerHour: 0.28 },
             },
         },
         {
@@ -121,7 +133,8 @@ export const NetflixTemplate = {
                 label: "MySQL (Billing/Account)",
                 icon: "mysql",
                 color: "blue",
-                sim: { capacity: 6000, replicas: 8, latencyMs: 12, errorRate: 0.0005 },
+                description: "Billing and account records, the one strongly relational store",
+                sim: { capacity: 6000, replicas: 24, latencyMs: 12, errorRate: 0.0005, costPerHour: 0.35 },
             },
         },
 
@@ -134,7 +147,8 @@ export const NetflixTemplate = {
                 label: "Kafka (Data Pipeline)",
                 icon: "kafka",
                 color: "orange",
-                sim: { capacity: 100000, replicas: 9, latencyMs: 3 },
+                description: "Pipeline carrying playback and UI events to the data platform",
+                sim: { capacity: 100000, replicas: 9, latencyMs: 3, costPerHour: 0.22 },
             },
         },
         {
@@ -145,7 +159,8 @@ export const NetflixTemplate = {
                 label: "Spark (Big Data)",
                 icon: "elastic",
                 color: "yellow",
-                sim: { capacity: 8000, replicas: 8, latencyMs: 30 },
+                description: "Batch and streaming jobs producing the recommendation models",
+                sim: { capacity: 8000, replicas: 18, latencyMs: 30, costPerHour: 0.32 },
             },
         },
     ],

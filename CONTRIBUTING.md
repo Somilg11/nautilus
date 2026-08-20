@@ -87,7 +87,8 @@ src/
 │   ├── editing-tools.tsx     # Second bar: dispatches `nautilus-*` events
 │   ├── left-sidebar.tsx      # Component palette (drag source)
 │   ├── right-sidebar.tsx     # Node properties, AI chat, API-key settings
-│   ├── simulation-panel.tsx  # Run transport controls
+│   ├── simulation-panel.tsx  # Trace / load / ramp controls
+│   ├── ramp-chart.tsx        # Inline SVG load-ramp curve
 │   ├── nodes/                # NautilusNode, GroupNode, icon registry
 │   └── edges/                # DeletableEdge
 ├── lib/

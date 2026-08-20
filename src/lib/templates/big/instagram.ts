@@ -4,6 +4,9 @@ export const InstagramTemplate = {
   id: "instagram",
   name: "Instagram Architecture",
   description: "Photo sharing with heavy read/write and media storage",
+  // Playground defaults: the load this design is meant to serve.
+  sim: { requestsPerSecond: 40000, timeoutMs: 400, payloadKb: 64, targetUtilization: 0.65, burstFactor: 2 },
+
   nodes: [
     // Client
     {
@@ -14,6 +17,7 @@ export const InstagramTemplate = {
         label: "Mobile App",
         icon: "client_mobile",
         color: "pink",
+        description: "Mobile client: uploads media and pulls a personalised feed",
         sim: { latencyMs: 5 },
       },
     },
@@ -27,7 +31,8 @@ export const InstagramTemplate = {
         label: "CDN (Cloudfront)",
         icon: "cdn",
         color: "orange",
-        sim: { capacity: 250000, replicas: 4, latencyMs: 15, errorRate: 0.0002 },
+        description: "Serves images and video from the edge; the origin only sees misses",
+        sim: { capacity: 250000, replicas: 4, latencyMs: 15, errorRate: 0.0002, costPerHour: 0.09, hitRate: 0.95 },
       },
     },
     {
@@ -38,7 +43,8 @@ export const InstagramTemplate = {
         label: "Load Balancer",
         icon: "load_balancer",
         color: "green",
-        sim: { capacity: 50000, replicas: 4, latencyMs: 2 },
+        description: "Spreads requests across app servers and drains unhealthy ones",
+        sim: { capacity: 50000, replicas: 4, latencyMs: 2, costPerHour: 0.03 },
       },
     },
 
@@ -51,7 +57,8 @@ export const InstagramTemplate = {
         label: "App Server (Django)",
         icon: "web_server",
         color: "blue",
-        sim: { capacity: 8000, replicas: 20, latencyMs: 15 },
+        description: "Django app server handling API traffic",
+        sim: { capacity: 8000, replicas: 20, latencyMs: 15, costPerHour: 0.1 },
       },
     },
     {
@@ -62,7 +69,8 @@ export const InstagramTemplate = {
         label: "App Server (Django)",
         icon: "web_server",
         color: "blue",
-        sim: { capacity: 8000, replicas: 20, latencyMs: 15 },
+        description: "Second Django instance for capacity and rolling deploys",
+        sim: { capacity: 8000, replicas: 20, latencyMs: 15, costPerHour: 0.1 },
       },
     },
 
@@ -75,7 +83,8 @@ export const InstagramTemplate = {
         label: "Feed Service",
         icon: "microservice",
         color: "purple",
-        sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+        description: "Assembles and ranks the timeline for each request",
+        sim: { capacity: 2500, replicas: 50, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
       },
     },
 
@@ -88,7 +97,8 @@ export const InstagramTemplate = {
         label: "User DB (Postgres)",
         icon: "postgres",
         color: "blue",
-        sim: { capacity: 6000, replicas: 8, latencyMs: 12, errorRate: 0.0005 },
+        description: "Relational store for accounts, follows and relationships",
+        sim: { capacity: 6000, replicas: 42, latencyMs: 12, errorRate: 0.0005, costPerHour: 0.35 },
       },
     },
     {
@@ -99,7 +109,8 @@ export const InstagramTemplate = {
         label: "Object Storage (S3)",
         icon: "s3",
         color: "orange",
-        sim: { capacity: 15000, replicas: 4, latencyMs: 45 },
+        description: "Durable object storage for original and derived media",
+        sim: { capacity: 15000, replicas: 17, latencyMs: 45, costPerHour: 0.05 },
       },
     },
     {
@@ -110,7 +121,8 @@ export const InstagramTemplate = {
         label: "Feed Cache (Redis)",
         icon: "redis",
         color: "red",
-        sim: { capacity: 120000, replicas: 8, latencyMs: 1 },
+        description: "Precomputed feeds in Redis; keeps the timeline off the database",
+        sim: { capacity: 120000, replicas: 8, latencyMs: 1, costPerHour: 0.14, hitRate: 0.9 },
       },
     },
 
@@ -123,7 +135,8 @@ export const InstagramTemplate = {
         label: "Task Queue (RabbitMQ)",
         icon: "rabbitmq",
         color: "orange",
-        sim: { capacity: 25000, replicas: 9, latencyMs: 5 },
+        description: "Buffers upload jobs so a burst of posts never blocks the API",
+        sim: { capacity: 25000, replicas: 9, latencyMs: 5, costPerHour: 0.16 },
       },
     },
     {
@@ -134,7 +147,8 @@ export const InstagramTemplate = {
         label: "Image Processor (Celery)",
         icon: "microservice",
         color: "yellow",
-        sim: { capacity: 2500, replicas: 40, latencyMs: 35, errorRate: 0.002 },
+        description: "Workers resizing, transcoding and generating thumbnails",
+        sim: { capacity: 2500, replicas: 50, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
       },
     },
   ],

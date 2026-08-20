@@ -8,12 +8,13 @@ import RightSidebar from "@/components/right-sidebar"
 import EditingTools from "@/components/editing-tools"
 import MobileDisclaimer from "@/components/mobile-disclaimer"
 import { FlowProvider, useFlow } from "@/lib/flow-context"
+import { DEFAULT_LOAD_PARAMS } from "@/lib/simulation-model"
 
 function DashboardInner() {
   const [rightOpen, setRightOpen] = useState(false)
   const [leftOpen, setLeftOpen] = useState(true)
 
-  const { setNodes, setEdges } = useFlow()
+  const { setNodes, setEdges, setLoadParams } = useFlow()
 
   return (
     <div className="flex flex-col h-screen">
@@ -24,6 +25,8 @@ function DashboardInner() {
         onInsertTemplate={(template) => {
           setNodes(template.nodes)
           setEdges(template.edges)
+          // Templates ship with the load they are meant to serve.
+          if (template.sim) setLoadParams({ ...DEFAULT_LOAD_PARAMS, ...template.sim })
         }}
         onToggleLeftSidebar={() => setLeftOpen((p) => !p)}
       />

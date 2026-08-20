@@ -4,6 +4,9 @@ export const ZomatoTemplate = {
     id: "zomato",
     name: "Zomato Architecture",
     description: "Food delivery platform with real-time tracking",
+    // Playground defaults: the load this design is meant to serve.
+    sim: { requestsPerSecond: 12000, timeoutMs: 600, payloadKb: 16, targetUtilization: 0.6, burstFactor: 3 },
+
     nodes: [
         // Clients
         {
@@ -14,6 +17,7 @@ export const ZomatoTemplate = {
                 label: "Customer App",
                 icon: "client_mobile",
                 color: "red",
+                description: "Diner app: search, order and track delivery",
                 sim: { latencyMs: 5 },
             },
         },
@@ -25,6 +29,7 @@ export const ZomatoTemplate = {
                 label: "Restaurant App",
                 icon: "client_web",
                 color: "red",
+                description: "Restaurant dashboard for accepting and preparing orders",
                 sim: { latencyMs: 5 },
             },
         },
@@ -36,6 +41,7 @@ export const ZomatoTemplate = {
                 label: "Driver App",
                 icon: "client_mobile",
                 color: "red",
+                description: "Delivery partner app streaming location updates",
                 sim: { latencyMs: 5 },
             },
         },
@@ -49,7 +55,8 @@ export const ZomatoTemplate = {
                 label: "Load Balancer",
                 icon: "load_balancer",
                 color: "blue",
-                sim: { capacity: 50000, replicas: 2, latencyMs: 2 },
+                description: "Terminates TLS and distributes traffic to the gateway fleet",
+                sim: { capacity: 50000, replicas: 2, latencyMs: 2, costPerHour: 0.03 },
             },
         },
         {
@@ -60,7 +67,8 @@ export const ZomatoTemplate = {
                 label: "API Gateway",
                 icon: "api_server",
                 color: "purple",
-                sim: { capacity: 20000, replicas: 6, latencyMs: 8, errorRate: 0.001 },
+                description: "Auth, rate limiting and routing for three different client types",
+                sim: { capacity: 20000, replicas: 6, latencyMs: 8, errorRate: 0.001, costPerHour: 0.12 },
             },
         },
 
@@ -73,7 +81,8 @@ export const ZomatoTemplate = {
                 label: "Restaurant Service",
                 icon: "microservice",
                 color: "green",
-                sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+                description: "Menus, availability and restaurant metadata",
+                sim: { capacity: 2500, replicas: 48, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
             },
         },
         {
@@ -84,7 +93,8 @@ export const ZomatoTemplate = {
                 label: "Order Service",
                 icon: "microservice",
                 color: "green",
-                sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+                description: "Order state machine from placement through delivery",
+                sim: { capacity: 2500, replicas: 24, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
             },
         },
         {
@@ -95,7 +105,8 @@ export const ZomatoTemplate = {
                 label: "Delivery Service",
                 icon: "microservice",
                 color: "green",
-                sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002 },
+                description: "Assigns partners and tracks delivery in real time",
+                sim: { capacity: 2500, replicas: 49, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
             },
         },
         {
@@ -106,7 +117,8 @@ export const ZomatoTemplate = {
                 label: "Search Service",
                 icon: "microservice",
                 color: "yellow",
-                sim: { capacity: 8000, replicas: 8, latencyMs: 30, errorRate: 0.002 },
+                description: "Ranked restaurant and dish search by location",
+                sim: { capacity: 8000, replicas: 8, latencyMs: 30, errorRate: 0.002, costPerHour: 0.1 },
             },
         },
 
@@ -119,7 +131,8 @@ export const ZomatoTemplate = {
                 label: "Restaurant DB",
                 icon: "postgres",
                 color: "blue",
-                sim: { capacity: 6000, replicas: 3, latencyMs: 12, errorRate: 0.0005 },
+                description: "Relational store for menus and restaurant records",
+                sim: { capacity: 6000, replicas: 20, latencyMs: 12, errorRate: 0.0005, costPerHour: 0.35 },
             },
         },
         {
@@ -130,7 +143,8 @@ export const ZomatoTemplate = {
                 label: "Order DB",
                 icon: "postgres",
                 color: "blue",
-                sim: { capacity: 6000, replicas: 3, latencyMs: 12, errorRate: 0.0005 },
+                description: "Transactional store for orders and payments",
+                sim: { capacity: 6000, replicas: 10, latencyMs: 12, errorRate: 0.0005, costPerHour: 0.35 },
             },
         },
         {
@@ -141,7 +155,8 @@ export const ZomatoTemplate = {
                 label: "Elasticsearch",
                 icon: "elastic",
                 color: "yellow",
-                sim: { capacity: 8000, replicas: 3, latencyMs: 30 },
+                description: "Geo and text index behind the search service",
+                sim: { capacity: 8000, replicas: 8, latencyMs: 30, costPerHour: 0.32 },
             },
         },
 
@@ -154,7 +169,8 @@ export const ZomatoTemplate = {
                 label: "Kafka (Events)",
                 icon: "kafka",
                 color: "orange",
-                sim: { capacity: 100000, replicas: 3, latencyMs: 3 },
+                description: "Order and delivery events feeding tracking, billing and analytics",
+                sim: { capacity: 100000, replicas: 3, latencyMs: 3, costPerHour: 0.22 },
             },
         },
         {
@@ -165,7 +181,8 @@ export const ZomatoTemplate = {
                 label: "Location Tracking",
                 icon: "redis",
                 color: "red",
-                sim: { capacity: 120000, replicas: 3, latencyMs: 1 },
+                description: "In-memory partner locations, updated every few seconds",
+                sim: { capacity: 120000, replicas: 3, latencyMs: 1, costPerHour: 0.14, hitRate: 0.9 },
             },
         },
     ],

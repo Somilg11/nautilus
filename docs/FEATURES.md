@@ -117,9 +117,46 @@ Per node (**Properties ▸ Simulation**):
 | Replicas | Identical instances; total capacity is capacity × replicas. |
 | Latency (ms) | Service time before queueing. |
 | Error rate (%) | Baseline failures, independent of overload. |
+| Cost / hour ($) | Price of one replica per hour; monthly cost is cost × replicas × 730. |
+| Cache hit (%) | Share answered here and not forwarded, so a backing store only sees misses. |
+| Failure | Failure injection (right-click a node): it serves nothing until restored. |
 
 Globally: offered load (req/s, split evenly across entry points), a timeout
-budget, and an average payload size for bandwidth estimates.
+budget, an average payload size for bandwidth estimates, the utilisation to size
+for (70% by default), and a burst factor — capacity has to survive the peak, so
+the load is applied as `load × burst`.
+
+Three things it will tell you that a drawing cannot:
+
+- **Capacity plan** — every node that would run hotter than the target gets a
+  replica suggestion (`Payment Service 8 → 90`), appliable one at a time or all
+  at once. Sized against demand, not against throttled traffic, so a saturated
+  gateway cannot hide the load behind it.
+- **Failure injection** — right-click a node and take it out. Watch which paths
+  die, where the traffic lands and what the success rate becomes. The flag is
+  saved with the diagram, so a failure scenario can be shared.
+- **p95 latency** — per hop and along the path, combined statistically rather
+  than by adding percentiles. The timeout check uses p95, because a design whose
+  average fits the budget can still time out for a noticeable slice of users.
+- **Load ramp** — the Ramp tab sweeps from zero to twice the current load and
+  plots offered against delivered. Where delivered flattens is the knee; the
+  panel also reports the highest load still served cleanly and where the p95
+  first breaches the budget. Click the curve to jump to that load.
+- **Cost** — price nodes per instance-hour and the panel reports monthly cost,
+  cost per million delivered requests, and what the capacity plan would do to the
+  bill (`$1,000 → $1,570/mo`). Every built-in template ships with rough cloud
+  list prices.
+- **Requests vs pipelines** — an edge into a queue is a hand-off, so a slow
+  consumer never inflates the request that triggered it. The timeout is checked
+  against the request path; background work is reported separately.
+- **Queues buffer** — a queue past capacity builds a backlog (`+4.0k/s`) instead
+  of dropping. Kafka, RabbitMQ, SQS and queue icons behave this way
+  automatically; anything else opts in with `sim.queue`.
+- **Baseline diff** — pin a run, then every number shows its delta and the diff
+  line names bottlenecks that appeared or cleared.
+- **Copy report** — a Markdown capacity summary (parameters, throughput, p95,
+  cost, critical path, bottlenecks, capacity plan) on the clipboard, ready for a
+  design doc or a PR.
 
 Results update live as you edit either the graph or the parameters. Each node
 shows a utilisation bar, its served rate and its queue-inflated latency; the
@@ -140,6 +177,12 @@ for finding capacity mistakes and bottlenecks, not for predicting a p99. Traffic
 through a cycle is undefined and reported as such.
 
 ## Templates
+
+Every template ships fully modelled: descriptions on every node, per-instance
+capacity, replica counts sized for its rated load, cloud list prices, and the
+playground parameters it was designed for — so loading one and pressing the
+gauge button gives a design that serves its own traffic at 100%, with the knee
+roughly 1.5–2× further out.
 
 Toolbar ▸ **Templates** loads a production-grade architecture onto the canvas —
 Netflix, Uber, WhatsApp, Instagram, YouTube, Spotify, Zomato, plus generic
@@ -243,11 +286,18 @@ would be upset to lose.
 | `data.sim.replicas` | node — identical instances | `1` |
 | `data.sim.latencyMs` | node — service time before queueing | `20` |
 | `data.sim.errorRate` | node — baseline failures, 0–1 | `0` |
+| `data.sim.down` | node — failure injection; serves nothing | absent |
+| `data.sim.costPerHour` | node — price of one replica per hour | `0` |
+| `data.sim.hitRate` | node — share answered here, not forwarded, 0–1 | `0` |
+| `data.sim.queue` | node — buffers past capacity instead of dropping | auto by icon |
+| `sim` (top level) | diagram — playground parameters | defaults |
 | `data.sim.share` | edge — fraction of requests taking this edge, 0–1 | `1` |
 | `data.sim.fanout` | edge — calls made per request | `1` |
+| `data.sim.async` | edge — hand-off; latency past it is a background pipeline | auto into queues |
 
 The simulation fields ride along through export, import, share links and
-autosave, so a diagram carries its capacity model with it. Unknown fields are
+autosave, so a diagram carries its capacity model — and the playground
+parameters that were set when it was shared — with it. Unknown fields are
 dropped on import; missing fields fall back to the defaults above rather than to
 zero.
 

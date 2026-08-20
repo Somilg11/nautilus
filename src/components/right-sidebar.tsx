@@ -40,6 +40,8 @@ import {
   X as XIcon,
   RotateCw,
   Gauge,
+  PowerOff,
+  TrendingUp,
 } from "lucide-react"
 
 import { toast } from "sonner"
@@ -155,6 +157,8 @@ export default function RightSidebar({
   const [replicas, setReplicas] = useState("")
   const [latency, setLatency] = useState("")
   const [errorPct, setErrorPct] = useState("")
+  const [cost, setCost] = useState("")
+  const [hitPct, setHitPct] = useState("")
 
   useEffect(() => {
     if (selectedNode) {
@@ -167,6 +171,8 @@ export default function RightSidebar({
       setReplicas(sim.replicas != null ? String(sim.replicas) : "")
       setLatency(sim.latencyMs != null ? String(sim.latencyMs) : "")
       setErrorPct(sim.errorRate != null ? String(Math.round(sim.errorRate * 1000) / 10) : "")
+      setCost(sim.costPerHour != null ? String(sim.costPerHour) : "")
+      setHitPct(sim.hitRate != null ? String(Math.round(sim.hitRate * 1000) / 10) : "")
     }
   }, [selectedNode])
 
@@ -181,6 +187,8 @@ export default function RightSidebar({
       const replicasNum = Number(replicas)
       const latencyNum = Number(latency)
       const errorNum = Number(errorPct)
+      const costNum = Number(cost)
+      const hitNum = Number(hitPct)
 
       if (capacity !== "" && Number.isFinite(capacityNum) && capacityNum > 0) sim.capacity = capacityNum
       if (replicas !== "" && Number.isFinite(replicasNum) && replicasNum >= 1) {
@@ -189,6 +197,10 @@ export default function RightSidebar({
       if (latency !== "" && Number.isFinite(latencyNum) && latencyNum >= 0) sim.latencyMs = latencyNum
       if (errorPct !== "" && Number.isFinite(errorNum) && errorNum >= 0) {
         sim.errorRate = Math.min(1, errorNum / 100)
+      }
+      if (cost !== "" && Number.isFinite(costNum) && costNum >= 0) sim.costPerHour = costNum
+      if (hitPct !== "" && Number.isFinite(hitNum) && hitNum >= 0) {
+        sim.hitRate = Math.min(1, hitNum / 100)
       }
 
       setNodes((prev) =>
@@ -201,7 +213,15 @@ export default function RightSidebar({
                 label: name,
                 description: desc,
                 color,
-                sim: Object.keys(sim).length > 0 ? sim : undefined,
+                // Preserve flags this panel does not edit (failure injection,
+                // explicit queue behaviour).
+                sim: (() => {
+                  const existing = (n.data?.sim ?? {}) as Record<string, unknown>
+                  const merged: Record<string, unknown> = { ...sim }
+                  if (existing.down) merged.down = true
+                  if (typeof existing.queue === "boolean") merged.queue = existing.queue
+                  return Object.keys(merged).length > 0 ? merged : undefined
+                })(),
               },
             }
             : n
@@ -211,7 +231,7 @@ export default function RightSidebar({
 
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, desc, color, capacity, replicas, latency, errorPct])
+  }, [name, desc, color, capacity, replicas, latency, errorPct, cost, hitPct])
 
   function deleteNode() {
     if (!selectedNode) return
@@ -646,7 +666,53 @@ export default function RightSidebar({
                     <SimField label="Replicas" value={replicas} onChange={setReplicas} placeholder="1" />
                     <SimField label="Latency (ms)" value={latency} onChange={setLatency} placeholder="20" />
                     <SimField label="Error rate (%)" value={errorPct} onChange={setErrorPct} placeholder="0" />
+                    <SimField label="Cost / hour ($)" value={cost} onChange={setCost} placeholder="0" />
+                    <SimField
+                      label="Cache hit (%)"
+                      value={hitPct}
+                      onChange={setHitPct}
+                      placeholder="0"
+                    />
                   </div>
+
+                  {metrics && metrics.monthlyCost > 0 && (
+                    <div className="text-[11px] text-muted-foreground">
+                      ${Math.round(metrics.monthlyCost).toLocaleString("en-US")}/month at{" "}
+                      {metrics.replicas} replica{metrics.replicas === 1 ? "" : "s"}
+                      {metrics.buffers && " · buffers instead of dropping"}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant={metrics?.down ? "destructive" : "outline"}
+                      className="h-7 flex-1 text-[11px]"
+                      onClick={() =>
+                        window.dispatchEvent(
+                          new CustomEvent("nautilus-node-failure", {
+                            detail: { id: selectedNode.id },
+                          })
+                        )
+                      }
+                    >
+                      <PowerOff className="mr-1.5 h-3 w-3" />
+                      {metrics?.down ? "Restore node" : "Simulate failure"}
+                    </Button>
+                  </div>
+
+                  {metrics && metrics.requiredReplicas > metrics.replicas && (
+                    <button
+                      onClick={() => setReplicas(String(metrics.requiredReplicas))}
+                      className="flex w-full items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-primary/10"
+                    >
+                      <TrendingUp className="h-3 w-3 shrink-0 text-primary" />
+                      <span>
+                        Needs <strong>{metrics.requiredReplicas}</strong> replicas at this load —
+                        click to apply
+                      </span>
+                    </button>
+                  )}
 
                   {metrics ? (
                     <div className="grid grid-cols-3 gap-2 border-t pt-2 text-center">
