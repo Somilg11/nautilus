@@ -387,3 +387,185 @@ describe("async hand-offs", () => {
     expect(report.summary.pipelinePath).toEqual(["audit"])
   })
 })
+
+describe("who initiates a call", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const flowEdge = (id: string, source: string, target: string, flow: any, sim?: any) => ({
+    id,
+    source,
+    target,
+    data: { flow, sim },
+  })
+
+  it("leaves what a slow consumer cannot pull in the queue, instead of dropping it", () => {
+    const kafka = { id: "q", type: "nautilusNode", data: { label: "q", icon: "kafka", sim: { capacity: 100000 } } }
+    const report = simulateLoad(
+      [node("api", { capacity: 100000 }), kafka, node("worker", { capacity: 300 })],
+      [edge("e1", "api", "q"), edge("e2", "q", "worker")],
+      params
+    )
+
+    // 1000 msg/s arrive, the consumer takes 300 — the other 700 are lag.
+    expect(report.metrics.worker.dropped).toBe(0)
+    expect(report.metrics.worker.accepted).toBe(300)
+    expect(report.metrics.worker.lagRate).toBe(700)
+    expect(report.metrics.worker.status).toBe("saturated")
+    expect(report.metrics.q.backlogRate).toBe(700)
+    expect(report.metrics.q.status).toBe("backlog")
+    expect(report.edges.e2.lagRate).toBe(700)
+    expect(report.summary.dropped).toBe(0)
+    expect(report.summary.backlogNodes).toEqual(["q"])
+    // It still needs four consumers to keep up.
+    expect(report.metrics.worker.requiredReplicas).toBe(Math.ceil(1000 / (300 * 0.7)))
+  })
+
+  it("only forwards what a queue can actually serve", () => {
+    const report = simulateLoad(
+      [node("q", { capacity: 400, queue: true }), node("worker", { capacity: 10000 })],
+      [edge("e1", "q", "worker")],
+      params
+    )
+
+    expect(report.metrics.q.backlogRate).toBe(600)
+    expect(report.metrics.worker.offered).toBe(400)
+  })
+
+  it("runs a cron job at its own rate, independent of user traffic", () => {
+    const cron = node("cleanup", { capacity: 1000, schedule: { kind: "cron", everyMs: 1000, batch: 50 } } as never)
+    const graph = [node("client"), node("api", { capacity: 100000 }), cron, node("db", { capacity: 100000 })]
+    const edges = [edge("e1", "client", "api"), edge("e2", "api", "db"), edge("e3", "cleanup", "db")]
+
+    const report = simulateLoad(graph, edges, params)
+
+    // The job is not an entry point, so it takes none of the offered load…
+    expect(report.metrics.client.offered).toBe(1000)
+    expect(report.metrics.cleanup.offered).toBe(50)
+    expect(report.metrics.cleanup.scheduledRate).toBe(50)
+    // …and the database sees both.
+    expect(report.metrics.db.offered).toBe(1050)
+    expect(report.summary.scheduledLoad).toBe(50)
+
+    // With no users at all, the job keeps running.
+    const idle = simulateLoad(graph, edges, { ...params, requestsPerSecond: 0 })
+    expect(idle.metrics.db.offered).toBe(50)
+  })
+
+  it("scales a worker loop with its replicas without asking for more because of it", () => {
+    const worker = node("w", {
+      capacity: 10,
+      replicas: 4,
+      schedule: { kind: "worker", everyMs: 100 },
+    } as never)
+    const report = simulateLoad([worker, node("db", { capacity: 1000 })], [edge("e1", "w", "db")], params)
+
+    // Four replicas, ten loops a second each.
+    expect(report.metrics.w.offered).toBe(40)
+    expect(report.metrics.db.offered).toBe(40)
+    // Adding replicas would add the same load again, so none is suggested.
+    expect(report.summary.scaleAdvice).toEqual([])
+  })
+
+  it("polls on a timer from every replica, whatever the source is serving", () => {
+    const report = simulateLoad(
+      [
+        node("client"),
+        node("api", { capacity: 100000, replicas: 5 }),
+        node("config", { capacity: 1000 }),
+      ],
+      [edge("e1", "client", "api"), flowEdge("poll", "api", "config", { op: "POLL", intervalMs: 500 })],
+      params
+    )
+
+    // 5 replicas × 2 polls per second — not the 1000 req/s passing through.
+    expect(report.metrics.config.offered).toBe(10)
+    expect(report.edges.poll.rate).toBe(10)
+    expect(report.edges.poll.mode).toBe("poll")
+    // Nobody's request waits on a background poll.
+    expect(report.summary.criticalPath).toEqual(["client", "api"])
+  })
+
+  it("stops polling when the poller is down", () => {
+    const report = simulateLoad(
+      [node("watcher", { capacity: 100, down: true }), node("db", { capacity: 1000 })],
+      [flowEdge("poll", "watcher", "db", { op: "POLL", intervalMs: 1000 })],
+      params
+    )
+
+    expect(report.metrics.db.offered).toBe(0)
+  })
+
+  it("does not send user traffic into a pure poller", () => {
+    const report = simulateLoad(
+      [node("client"), node("api", { capacity: 100000 }), node("watcher", { capacity: 100 })],
+      [edge("e1", "client", "api"), flowEdge("poll", "watcher", "api", { op: "POLL", intervalMs: 1000 })],
+      params
+    )
+
+    expect(report.metrics.client.offered).toBe(1000)
+    expect(report.metrics.watcher.offered).toBe(0)
+    expect(report.metrics.api.offered).toBe(1001)
+  })
+
+  it("reports how long each call takes, including what the target waits on", () => {
+    const report = simulateLoad(
+      [
+        node("api", { capacity: 1000000, latencyMs: 10 }),
+        node("svc", { capacity: 1000000, latencyMs: 20 }),
+        node("db", { capacity: 1000000, latencyMs: 30 }),
+        { id: "q", type: "nautilusNode", data: { label: "q", icon: "kafka", sim: { capacity: 1000000, latencyMs: 2 } } },
+        node("slow", { capacity: 1000000, latencyMs: 5000 }),
+      ],
+      [
+        flowEdge("call", "api", "svc", { op: "GET", path: "/x", timeoutMs: 40 }),
+        edge("query", "svc", "db"),
+        edge("publish", "svc", "q"),
+        edge("consume", "q", "slow"),
+      ],
+      params
+    )
+
+    // api waits for svc, and svc waits for db — but not for the consumer.
+    expect(report.edges.call.responseMs).toBeCloseTo(50, 0)
+    expect(report.edges.query.responseMs).toBeCloseTo(30, 0)
+    // A publish only waits for the broker.
+    expect(report.edges.publish.responseMs).toBeCloseTo(2, 0)
+
+    expect(report.edges.call.timedOut).toBe(true)
+    expect(report.summary.slowCalls).toEqual(["call"])
+    expect(capacityReport(report)).toContain("Calls over their timeout")
+  })
+})
+
+describe("compiled graph", () => {
+  it("gives the same answer when reused across loads", async () => {
+    const { compileGraph, runCompiled } = await import("../simulation-model")
+    const nodes = [node("api", { capacity: 400, latencyMs: 10 }), node("db", { capacity: 4000 })]
+    const edges = [edge("e1", "api", "db")]
+
+    const compiled = compileGraph(nodes, edges)
+    for (const rps of [100, 1000, 100, 5000]) {
+      const p = { ...params, requestsPerSecond: rps }
+      expect(runCompiled(compiled, p)).toEqual(simulateLoad(nodes, edges, p))
+    }
+  })
+
+  it("stays linear on a large diagram", async () => {
+    const { compileGraph, sweepCompiled } = await import("../simulation-model")
+    const count = 2000
+    const nodes = Array.from({ length: count }, (_, i) => node(`n${i}`, { capacity: 5000, latencyMs: 1 }))
+    // A long chain with a cross link every few nodes: 2000 nodes, ~2600 edges.
+    const edges = [
+      ...Array.from({ length: count - 1 }, (_, i) => edge(`c${i}`, `n${i}`, `n${i + 1}`)),
+      ...Array.from({ length: 600 }, (_, i) => edge(`x${i}`, `n${i * 3}`, `n${i * 3 + 7}`, { share: 0.01 })),
+    ]
+
+    const started = performance.now()
+    const compiled = compileGraph(nodes, edges)
+    const ramp = sweepCompiled(compiled, params, { maxRps: 10000 })
+    const elapsed = performance.now() - started
+
+    expect(ramp.points).toHaveLength(24)
+    // Generous bound: this takes a few tens of ms; quadratic would take seconds.
+    expect(elapsed).toBeLessThan(1500)
+  })
+})

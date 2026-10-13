@@ -9,7 +9,27 @@ import { simulateLoad, DEFAULT_LOAD_PARAMS } from "../simulation-model"
  * reference for the JSON format — so they have to survive validation, have a
  * runnable shape, and hold capacity numbers that are actually reachable.
  */
+/**
+ * Room a node needs on the canvas: it grows to 320px wide, and a description
+ * plus the load playground's metrics row make it roughly this tall.
+ */
+const NODE_BOX = { width: 330, height: 190 }
+
 describe("built-in templates", () => {
+  it.each(AllTemplates.map((t) => [t.id, t] as const))("%s lays out without overlapping nodes", (_id, template) => {
+    const overlapping: string[] = []
+    template.nodes.forEach((a, i) => {
+      template.nodes.slice(i + 1).forEach((b) => {
+        const dx = Math.abs(a.position.x - b.position.x)
+        const dy = Math.abs(a.position.y - b.position.y)
+        if (dx < NODE_BOX.width && dy < NODE_BOX.height) overlapping.push(`${a.id} / ${b.id}`)
+      })
+    })
+
+    // Overlapping nodes hide the request badges on the connections between them.
+    expect(overlapping).toEqual([])
+  })
+
   it.each(AllTemplates.map((t) => [t.id, t] as const))("%s is valid and runnable", (_id, template) => {
     const { diagram, notes } = sanitizeDiagram(template)
 

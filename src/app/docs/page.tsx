@@ -34,23 +34,26 @@ export default function DocsIntroPage() {
       <PageHeader
         eyebrow="Getting started"
         title="Introduction"
-        lead="Nautilus is an open-source canvas for designing and explaining software architecture — components, connections, templates, a flow simulator and an optional AI assistant, all running in your browser."
+        lead="Nautilus is an open-source canvas for designing and explaining software architecture — components, numbered requests, templates, a load simulator and an optional AI assistant, all running in your browser."
       />
 
       <Section title="What it is">
         <P>
-          A diagram in Nautilus is a graph of components and directed
-          dependencies. That structure is what makes the rest possible: the
-          simulator can walk it, the AI assistant can reason about it, and the
-          exported JSON is something you can diff in a pull request.
+          A diagram in Nautilus is a graph of components and the requests
+          between them — who calls whom, with what, and whether anyone waits.
+          That structure is what makes the rest possible: every request gets a
+          number, the simulator can push traffic through it, the AI assistant
+          can reason about it, and the exported JSON is something you can diff
+          in a pull request.
         </P>
       </Section>
 
       <Section title="What it deliberately isn't">
         <P>
           There is no account, no server and no database. Diagrams live in your
-          browser&apos;s local storage and in files you export; AI features use a
-          key you supply and talk straight to the provider. That is what keeps
+          browser&apos;s local storage and in files you export; simulations run
+          on your own machine; AI features use a key you supply and talk
+          straight to the provider. That is what keeps
           Nautilus free to use, private by default and trivial to self-host.
         </P>
         <Callout title="No lock-in">

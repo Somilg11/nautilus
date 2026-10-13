@@ -52,8 +52,10 @@ Out of scope:
 
 ## Hardening already in place
 
-- Strict `Content-Security-Policy`: scripts from `'self'` only, and
-  `connect-src` limited to the four AI provider hosts.
+- `Content-Security-Policy`: no third-party script origins, inline scripts
+  limited to the hashes of the ones the build emitted, workers from the app's
+  own origin only, `connect-src` limited to the four AI provider hosts,
+  `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'`.
 - `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`,
   `Strict-Transport-Security`.
@@ -61,4 +63,21 @@ Out of scope:
   output) are validated and stripped to known fields before rendering.
 - API keys are sent only to the provider the user selected, over HTTPS, and are
   never logged or transmitted anywhere else.
+- Simulations run in a same-origin Web Worker and make no network requests.
 - `npm audit` is enforced in CI.
+
+## Known limitations
+
+- **`script-src` is hash-based, and only after `npm run build`.** Next.js boots
+  every page with inline scripts, so the build finishes by hashing them and
+  replacing `'unsafe-inline'` with those exact hashes
+  (`scripts/csp-hashes.mjs`). Injected inline scripts and inline event handlers
+  are then refused by the browser. A deployment built with a bare `next build`,
+  and the development server, keep the looser `'unsafe-inline'` policy.
+- `style-src` still allows `'unsafe-inline'`: the canvas positions nodes with
+  inline styles. Injected CSS cannot run script, and `connect-src` and
+  `img-src` limit where it could send anything.
+- A static export sends no headers at all — the policy has to be re-created at
+  the CDN.
+- Keys in `localStorage` are readable by any code running on the origin,
+  including browser extensions with access to the page.

@@ -39,6 +39,11 @@ npm start           # http://localhost:3000
 
 For development use `npm run dev` instead of `build` + `start`.
 
+Always build with **`npm run build`**, not a bare `next build`. The script runs
+one extra step afterwards that pins the Content-Security-Policy to the hashes of
+the inline scripts the build produced; without it the app still works, but with
+a looser policy that allows any inline script.
+
 ## Deploy to Vercel
 
 The zero-config path:
@@ -138,7 +143,10 @@ or any static host.
 > `next.config.ts`. Re-create them at the CDN/host layer (CloudFront response
 > headers policy, Netlify `_headers`, Cloudflare Transform Rules). Losing the
 > CSP on a build where visitors store API keys is a real downgrade, not a
-> cosmetic one — copy the policy out of `next.config.ts` verbatim.
+> cosmetic one. Copy the policy from a response of a normal build
+> (`npm run build && npm start`, then `curl -sI localhost:3000 | grep -i
+> content-security`), not from `next.config.ts` — the served one carries the
+> script hashes, and they change with every build.
 
 ## Hosting behind a path or subdomain
 
@@ -160,9 +168,9 @@ Nautilus is a single-origin, client-only app. The security model follows from
 that:
 
 1. **API keys live in `localStorage` on your origin.** Any script that executes
-   on your deployment can read them. This is why the app ships a strict
-   Content-Security-Policy that allows scripts only from `'self'` and network
-   calls only to the four AI provider hosts. Don't loosen it to add analytics or
+   on your deployment can read them. This is why the app ships a
+   Content-Security-Policy that allows no third-party script origins and
+   network calls only to the four AI provider hosts. Don't loosen it to add analytics or
    an embed widget without understanding that trade-off; if you must, add the
    specific host rather than a wildcard.
 2. **Serve over HTTPS.** `Strict-Transport-Security` is sent on every response.
@@ -173,8 +181,14 @@ that:
    both (`src/lib/diagram-io.ts`) and drops anything it doesn't recognise, so a
    hand-crafted payload cannot inject arbitrary props into the canvas.
 5. **No telemetry.** Nautilus makes no network calls of its own; the only
-   outbound requests are the AI calls a user explicitly triggers.
-6. **Keep dependencies patched.** `npm audit` should report zero
+   outbound requests are the AI calls a user explicitly triggers. Simulations
+   run in a Web Worker in the visitor's browser and never reach your host — a
+   thousand people running the load playground cost you nothing but the
+   static files.
+6. **Keep `worker-src 'self' blob:` if you rewrite the policy.** Without it the
+   load playground falls back to running on the page's main thread; it still
+   works, but large diagrams will stutter while it runs.
+7. **Keep dependencies patched.** `npm audit` should report zero
    vulnerabilities; CI runs it on every push.
 
 If you deploy Nautilus for a team, consider disabling the AI panel entirely
@@ -202,4 +216,6 @@ canvas. Exported JSON from any version imports cleanly.
 | AI request fails with a CORS error | The provider host isn't in `connect-src` in `next.config.ts`, or your CDN is stripping/overriding the CSP. |
 | Claude requests fail from the browser | The request must send `anthropic-dangerous-direct-browser-access: true`; it is set in `src/lib/ai-client.ts`. |
 | Blank page after deploy behind a path | `basePath`/`assetPrefix` not set — see above. |
+| Load playground shows "In-page" instead of "Web Worker" | The worker script was blocked — usually a rewritten CSP missing `worker-src 'self' blob:`, or a CDN serving the worker chunk with the wrong MIME type. |
+| Blank page, console says an inline script violates `script-src` | The HTML and the policy come from different builds — typically a CDN caching pages across a deploy, or a hand-copied policy with stale hashes. Purge the cache, or re-copy the policy from the new build. |
 | Diagram vanished | `localStorage` was cleared (private window, browser cleanup, different origin). Autosave is not a backup; export JSON. |

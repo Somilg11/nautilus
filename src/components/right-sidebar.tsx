@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import {
   Sheet,
   SheetClose,
@@ -42,6 +42,7 @@ import {
   Gauge,
   PowerOff,
   TrendingUp,
+  Clock,
 } from "lucide-react"
 
 import { toast } from "sonner"
@@ -64,6 +65,8 @@ import {
   type SimulationReport,
 } from "@/lib/simulation-model"
 import { sanitizeDiagram, type Diagram } from "@/lib/diagram-io"
+import { formatInterval, scheduleRate } from "@/lib/flow-ops"
+import EdgeInspector, { sameJson } from "@/components/edge-inspector"
 import { MarkerType } from "reactflow"
 
 import { SiOpenai, SiGoogle, SiPlanetscale as SiGroq } from "react-icons/si"
@@ -126,6 +129,8 @@ export default function RightSidebar({
   const [tab, setTab] = useState("properties")
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null
+  // A connection is inspected when it is selected and no node is.
+  const selectedEdge = selectedNode ? null : edges.find((e) => e.selected) || null
 
   /**
    * Live load metrics, broadcast by the canvas. They are render-only there, so
@@ -159,6 +164,11 @@ export default function RightSidebar({
   const [errorPct, setErrorPct] = useState("")
   const [cost, setCost] = useState("")
   const [hitPct, setHitPct] = useState("")
+  /** Self-starting work: "" means the node only reacts to incoming traffic. */
+  const [scheduleKind, setScheduleKind] = useState<"" | "cron" | "worker">("")
+  const [scheduleEvery, setScheduleEvery] = useState("")
+  const [scheduleBatch, setScheduleBatch] = useState("")
+  const loadedNodeRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (selectedNode) {
@@ -170,9 +180,17 @@ export default function RightSidebar({
       setCapacity(sim.capacity != null ? String(sim.capacity) : "")
       setReplicas(sim.replicas != null ? String(sim.replicas) : "")
       setLatency(sim.latencyMs != null ? String(sim.latencyMs) : "")
-      setErrorPct(sim.errorRate != null ? String(Math.round(sim.errorRate * 1000) / 10) : "")
+      setErrorPct(sim.errorRate != null ? percentText(sim.errorRate) : "")
       setCost(sim.costPerHour != null ? String(sim.costPerHour) : "")
-      setHitPct(sim.hitRate != null ? String(Math.round(sim.hitRate * 1000) / 10) : "")
+      setHitPct(sim.hitRate != null ? percentText(sim.hitRate) : "")
+      // A half-typed interval is not a schedule yet, so the node has none —
+      // but that must not snap the form back while the same node is being edited.
+      if (sim.schedule || loadedNodeRef.current !== selectedNode.id) {
+        setScheduleKind(sim.schedule?.kind ?? "")
+        setScheduleEvery(sim.schedule?.everyMs != null ? String(sim.schedule.everyMs / 1000) : "")
+        setScheduleBatch(sim.schedule?.batch != null ? String(sim.schedule.batch) : "")
+      }
+      loadedNodeRef.current = selectedNode.id
     }
   }, [selectedNode])
 
@@ -190,48 +208,77 @@ export default function RightSidebar({
       const costNum = Number(cost)
       const hitNum = Number(hitPct)
 
+      const existingSim = (selectedNode.data?.sim ?? {}) as Record<string, any>
+
       if (capacity !== "" && Number.isFinite(capacityNum) && capacityNum > 0) sim.capacity = capacityNum
       if (replicas !== "" && Number.isFinite(replicasNum) && replicasNum >= 1) {
         sim.replicas = Math.round(replicasNum)
       }
       if (latency !== "" && Number.isFinite(latencyNum) && latencyNum >= 0) sim.latencyMs = latencyNum
+      // A percentage that still reads the way it was loaded keeps the stored
+      // value exactly — converting it there and back would drift.
       if (errorPct !== "" && Number.isFinite(errorNum) && errorNum >= 0) {
-        sim.errorRate = Math.min(1, errorNum / 100)
+        sim.errorRate =
+          existingSim.errorRate != null && percentText(existingSim.errorRate) === errorPct
+            ? existingSim.errorRate
+            : Math.min(1, errorNum / 100)
       }
       if (cost !== "" && Number.isFinite(costNum) && costNum >= 0) sim.costPerHour = costNum
       if (hitPct !== "" && Number.isFinite(hitNum) && hitNum >= 0) {
-        sim.hitRate = Math.min(1, hitNum / 100)
+        sim.hitRate =
+          existingSim.hitRate != null && percentText(existingSim.hitRate) === hitPct
+            ? existingSim.hitRate
+            : Math.min(1, hitNum / 100)
       }
 
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === selectedNode.id
-            ? {
-              ...n,
-              data: {
-                ...n.data,
-                label: name,
-                description: desc,
-                color,
-                // Preserve flags this panel does not edit (failure injection,
-                // explicit queue behaviour).
-                sim: (() => {
-                  const existing = (n.data?.sim ?? {}) as Record<string, unknown>
-                  const merged: Record<string, unknown> = { ...sim }
-                  if (existing.down) merged.down = true
-                  if (typeof existing.queue === "boolean") merged.queue = existing.queue
-                  return Object.keys(merged).length > 0 ? merged : undefined
-                })(),
-              },
+      const everyNum = Number(scheduleEvery)
+      const batchNum = Number(scheduleBatch)
+      const schedule =
+        scheduleKind && scheduleEvery !== "" && Number.isFinite(everyNum) && everyNum > 0
+          ? {
+              kind: scheduleKind,
+              everyMs: Math.max(1, everyNum * 1000),
+              ...(scheduleBatch !== "" && Number.isFinite(batchNum) && batchNum >= 0
+                ? { batch: batchNum }
+                : {}),
             }
-            : n
-        )
-      )
+          : undefined
+
+      setNodes((prev) => {
+        let changed = false
+        const next = prev.map((n) => {
+          if (n.id !== selectedNode.id) return n
+
+          // Preserve flags this panel does not edit (failure injection,
+          // explicit queue behaviour).
+          const existing = (n.data?.sim ?? {}) as Record<string, unknown>
+          const merged: Record<string, unknown> = { ...sim }
+          if (existing.down) merged.down = true
+          if (typeof existing.queue === "boolean") merged.queue = existing.queue
+          if (schedule) merged.schedule = schedule
+          const nextSim = Object.keys(merged).length > 0 ? merged : undefined
+
+          // Selecting a node replays its own values through this form; that
+          // must not count as an edit, or every click would be an undo step.
+          if (
+            (n.data?.label ?? "") === name &&
+            (n.data?.description ?? "") === desc &&
+            (n.data?.color ?? "default") === color &&
+            sameJson(n.data?.sim, nextSim)
+          ) {
+            return n
+          }
+
+          changed = true
+          return { ...n, data: { ...n.data, label: name, description: desc, color, sim: nextSim } }
+        })
+        return changed ? next : prev
+      })
     }, 200)
 
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, desc, color, capacity, replicas, latency, errorPct, cost, hitPct])
+  }, [name, desc, color, capacity, replicas, latency, errorPct, cost, hitPct, scheduleKind, scheduleEvery, scheduleBatch])
 
   function deleteNode() {
     if (!selectedNode) return
@@ -372,14 +419,20 @@ export default function RightSidebar({
     })
   }, [messages, loading])
 
-  const diagramContext = useMemo(
-    () => ({
-      name: projectName,
-      nodes: nodes.map((n) => ({ id: n.id, data: n.data })),
-      edges: edges.map((e) => ({ source: e.source, target: e.target })),
-    }),
-    [nodes, edges, projectName]
-  )
+  /**
+   * What the assistant is told about the canvas. Built when a message is sent,
+   * not on every canvas change — this panel is mounted while you drag.
+   */
+  const buildDiagramContext = () => ({
+    name: projectName,
+    nodes: nodes.map((n) => ({ id: n.id, data: n.data })),
+    edges: edges.map((e) => ({
+      source: e.source,
+      target: e.target,
+      op: e.data?.flow?.op,
+      path: e.data?.flow?.path,
+    })),
+  })
 
   const send = useCallback(
     async (text: string) => {
@@ -411,7 +464,7 @@ export default function RightSidebar({
           provider,
           keys,
           history,
-          diagram: diagramContext,
+          diagram: buildDiagramContext(),
           modelId: modelFor(provider),
           signal: controller.signal,
         })
@@ -429,6 +482,8 @@ export default function RightSidebar({
             source: e.source,
             target: e.target,
             markerEnd: { type: MarkerType.Arrow },
+            // Request type and endpoint, validated like everything else.
+            data: { flow: { op: e.op, path: e.path } },
           })),
         })
 
@@ -469,7 +524,7 @@ export default function RightSidebar({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [messages, provider, keys, models, diagramContext, loading]
+    [messages, provider, keys, models, nodes, edges, projectName, loading]
   )
 
   function stop() {
@@ -561,6 +616,7 @@ export default function RightSidebar({
               {selectedNode.data?.label || "Untitled node"}
             </Badge>
           )}
+          {selectedEdge && <Badge variant="outline">Connection</Badge>}
 
           <SheetClose asChild>
             <Button
@@ -585,11 +641,19 @@ export default function RightSidebar({
 
           {/* ================= PROPERTIES ================= */}
           <TabsContent value="properties" className="flex-1 min-h-0 overflow-y-auto p-4 m-0">
-            {!selectedNode ? (
+            {selectedEdge ? (
+              <EdgeInspector
+                key={selectedEdge.id}
+                edge={selectedEdge}
+                nodes={nodes}
+                setEdges={setEdges}
+                metrics={loadReport?.edges[selectedEdge.id]}
+              />
+            ) : !selectedNode ? (
               <EmptyState
                 icon={<MousePointerSquareDashed className="h-5 w-5" />}
-                title="No node selected"
-                body="Click a node on the canvas to edit its label, description and colour."
+                title="Nothing selected"
+                body="Click a node to edit its label and capacity, or a connection to set the request it makes — method, endpoint, timeout, polling."
               />
             ) : (
               <div className="space-y-5">
@@ -731,6 +795,59 @@ export default function RightSidebar({
                       numbers.
                     </p>
                   )}
+                </div>
+
+                {/* -------- SCHEDULE -------- */}
+                <div className="space-y-3 rounded-lg border p-3">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[13px] font-medium">Runs on its own</span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1">
+                    {(
+                      [
+                        ["", "On request"],
+                        ["cron", "Cron job"],
+                        ["worker", "Worker loop"],
+                      ] as const
+                    ).map(([kind, label]) => (
+                      <Button
+                        key={kind}
+                        size="sm"
+                        variant={scheduleKind === kind ? "secondary" : "ghost"}
+                        className="h-7 text-[11px]"
+                        aria-pressed={scheduleKind === kind}
+                        onClick={() => {
+                          setScheduleKind(kind)
+                          if (kind && scheduleEvery === "") setScheduleEvery(kind === "cron" ? "60" : "1")
+                        }}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {scheduleKind !== "" && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <SimField
+                        label={scheduleKind === "cron" ? "Every (s)" : "Loop every (s)"}
+                        value={scheduleEvery}
+                        onChange={setScheduleEvery}
+                        placeholder={scheduleKind === "cron" ? "60" : "1"}
+                      />
+                      <SimField
+                        label="Jobs per run"
+                        value={scheduleBatch}
+                        onChange={setScheduleBatch}
+                        placeholder="1"
+                      />
+                    </div>
+                  )}
+
+                  <p className="text-[11px] leading-5 text-muted-foreground">
+                    {scheduleSummary(scheduleKind, scheduleEvery, scheduleBatch, replicas)}
+                  </p>
                 </div>
 
                 <div className="rounded-lg border bg-muted/30 px-3 py-2">
@@ -1100,6 +1217,28 @@ export default function RightSidebar({
       </SheetContent>
     </Sheet>
   )
+}
+
+/** A 0–1 ratio as the percentage shown in the form, without rounding it away. */
+function percentText(ratio: number) {
+  return String(+(ratio * 100).toPrecision(6))
+}
+
+function scheduleSummary(kind: string, every: string, batch: string, replicas: string) {
+  if (kind !== "cron" && kind !== "worker") {
+    return "This component only works when something calls it. Make it a cron job or a worker loop to have it start requests itself."
+  }
+
+  const everyMs = Number(every) * 1000
+  if (!Number.isFinite(everyMs) || everyMs <= 0) return "Set an interval to start the schedule."
+
+  const batchNum = batch !== "" && Number(batch) >= 0 ? Number(batch) : 1
+  const rate = scheduleRate({ kind, everyMs, batch: batchNum }, Math.max(1, Number(replicas) || 1))
+  const perSecond = rate >= 1 ? `${+rate.toPrecision(3)}/s` : `${+(rate * 60).toPrecision(3)}/min`
+
+  return kind === "cron"
+    ? `Fires once every ${formatInterval(everyMs)} no matter how many replicas run — ${perSecond} sent down its outgoing connections.`
+    : `Every replica loops every ${formatInterval(everyMs)} — ${perSecond} in total, growing with the replica count.`
 }
 
 /* ---------------------------------------------

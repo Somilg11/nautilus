@@ -53,15 +53,15 @@ const PRINCIPLES = [
 const INSIDE = [
   {
     label: "Component library",
-    body: "Hundreds of cloud, database, messaging, auth and DevOps icons, searchable and draggable.",
+    body: "60+ cloud, database, messaging, auth and DevOps components, searchable and draggable.",
   },
   {
     label: "Templates",
     body: "Netflix, Uber, WhatsApp, Instagram, YouTube, Spotify, Zomato, three-tier and microservices.",
   },
   {
-    label: "Trace simulation",
-    body: "Layered execution with play, pause, step and speed — parallel branches light up together.",
+    label: "Numbered requests",
+    body: "Every connection is a request with a step number — GET, PUBLISH, CONSUME, POLL — replayed one at a time with play, pause, step and speed.",
   },
   {
     label: "Load playground",
@@ -248,10 +248,11 @@ export default function AboutPage() {
           </div>
           <div className="space-y-4">
             <p className="text-[15px] leading-7 text-muted-foreground">
-              <strong className="text-foreground">Trace</strong> walks the graph
-              in dependency order: entry points first, then everything whose
-              upstream work has finished — so parallel branches light up
-              together, and cycles get named instead of hanging.
+              <strong className="text-foreground">Trace</strong> replays the
+              design one numbered request at a time: a call is followed through
+              everything its handler waits on, what a publish sets off comes
+              after, and cron jobs and pollers run as flows of their own.
+              Cycles get named instead of hanging.
             </p>
             <p className="text-[15px] leading-7 text-muted-foreground">
               The <strong className="text-foreground">load playground</strong>{" "}

@@ -29,11 +29,14 @@ bug fix in the canvas, a docs correction.
 | Desktop packaging | 🟡 medium | `bin/`, `desktop/` |
 | UI polish, dark-mode fixes, a11y | 🟡 medium | `src/components/` |
 | Canvas behaviour (grouping, alignment, edges) | 🟡 medium | `src/components/canvas.tsx` |
-| Simulation engines | 🔴 involved | `src/lib/flow-execution.ts`, `src/lib/simulation-model.ts`, `src/lib/use-simulation.ts` |
+| Request model and simulators | 🔴 involved | `src/lib/flow-ops.ts`, `src/lib/simulation-model.ts`, `src/lib/sim-engine.ts` |
 | New AI provider | 🔴 involved | `src/lib/ai-client.ts` |
 
 Small PRs get reviewed fastest. If a change is large or changes the data format
 (`nodes` / `edges` JSON), open an issue first so we can agree on the shape.
+
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains how the pieces fit
+together and is worth ten minutes before touching the canvas or the simulators.
 
 ---
 
@@ -87,15 +90,22 @@ src/
 │   ├── editing-tools.tsx     # Second bar: dispatches `nautilus-*` events
 │   ├── left-sidebar.tsx      # Component palette (drag source)
 │   ├── right-sidebar.tsx     # Node properties, AI chat, API-key settings
-│   ├── simulation-panel.tsx  # Trace / load / ramp controls
+│   ├── edge-inspector.tsx    # Connection properties: operation, endpoint, timing
+│   ├── simulation-panel.tsx  # Trace / Load / Ramp / Calls tabs
 │   ├── ramp-chart.tsx        # Inline SVG load-ramp curve
 │   ├── nodes/                # NautilusNode, GroupNode, icon registry
-│   └── edges/                # DeletableEdge
+│   └── edges/                # DeletableEdge (numbered badge), shared arrow markers
 ├── lib/
-│   ├── flow-context.tsx      # Canvas state, undo/redo, autosave, share links
-│   ├── flow-execution.ts     # Layered execution planner (pure, tested)
-│   ├── simulation-model.ts   # Load/capacity model (pure, tested)
-│   ├── use-simulation.ts     # Run/pause/step state machine
+│   ├── flow-context.tsx      # Canvas store, undo/redo, autosave, share links
+│   ├── flow-ops.ts           # Request model, inference, step numbering (pure, tested)
+│   ├── flow-execution.ts     # Dependency-order planner (pure, tested)
+│   ├── simulation-model.ts   # compileGraph / runCompiled / sweepCompiled (pure, tested)
+│   ├── sim-engine.ts         # Message protocol around the model (pure, tested)
+│   ├── sim-worker.ts         # Web Worker entry point
+│   ├── use-load-engine.ts    # Worker lifecycle, one run in flight, inline fallback
+│   ├── sim-graph.ts          # Projector: canvas state → stable simulation graph
+│   ├── canvas-decorate.ts    # Render-time decoration with identity caching
+│   ├── use-simulation.ts     # Trace playback state machine
 │   ├── auto-layout.ts        # Dependency-layered layout for AI output
 │   ├── diagram-io.ts         # Validation for untrusted diagram JSON
 │   ├── ai-client.ts          # Browser-side provider calls
@@ -114,7 +124,9 @@ Toolbar buttons do **not** call canvas functions directly — they dispatch
 | `nautilus-group` / `-ungroup` | `canvas.tsx` | Real React Flow parent nodes |
 | `nautilus-align-left` / `-center` / `-right` / `-distribute-h` | `canvas.tsx` | Uses measured node widths |
 | `nautilus-zoom-in` / `-zoom-out` / `-fit-view` | `canvas.tsx` | |
-| `nautilus-delete-edge` | `canvas.tsx` | Dispatched by `DeletableEdge` |
+| `nautilus-delete-edge` | `canvas.tsx` | Dispatched by `DeletableEdge` and the connection inspector |
+| `nautilus-node-action` | `canvas.tsx` | Node context menu: edit, duplicate, delete |
+| `nautilus-node-failure` | `canvas.tsx` | Toggle failure injection on a node |
 | `nautilus-import` | `flow-context.tsx` (state) + `canvas.tsx` (fit view) | Payload is validated |
 | `nautilus-run` / `nautilus-run-stop` | `canvas.tsx` | Starts/stops the trace simulation |
 | `nautilus-load-toggle` | `canvas.tsx` | Opens/closes the load playground |
@@ -166,7 +178,7 @@ export const MySystemTemplate = {
     {
       id: "api",
       type: "nautilusNode",
-      position: { x: 0, y: 160 },
+      position: { x: 0, y: 300 },
       data: {
         label: "API",
         icon: "api_server",
@@ -184,23 +196,36 @@ export const MySystemTemplate = {
       target: "api",
       type: "deletableEdge",
       markerEnd: { type: MarkerType.Arrow },
-      // Optional routing model for the load playground.
-      data: { sim: { share: 1, fanout: 1 } },
+      data: {
+        // What this connection does. Leave `flow` out and it is inferred.
+        flow: { op: "GET", path: "/api/*" },
+        // Optional routing model for the load playground.
+        sim: { share: 1, fanout: 1 },
+      },
     },
   ],
 }
 ```
 
 2. Register it in `src/lib/templates/index.ts`.
-3. Check it in the app: **Templates** in the toolbar, then press **Run** — the
-   simulation is a quick sanity check that the graph flows the way you intended.
+3. Check it in the app: **Templates** in the toolbar, then press **Run** and
+   read the numbered requests — it is a quick check that the flow is the one
+   you intended. Then open the load playground: at the template's own `sim`
+   parameters nothing should be dropped.
 
 Template guidelines:
 
-- Lay out top-to-bottom, clients at the top, storage at the bottom.
+- Lay out top-to-bottom, clients at the top, storage at the bottom. Leave at
+  least 340px between nodes side by side and 200px between rows — a node grows
+  to 320px wide, and the test suite rejects a template whose nodes overlap.
 - Give every node a `description`; it is what makes a template teach something.
 - Colour by role: clients blue, compute green, storage red, messaging yellow.
 - Avoid cycles unless the architecture genuinely has one.
+- Draw every connection from initiator to receiver (producer → queue → consumer),
+  and prefer an explicit `flow.op` and `path` — a template is read more than it
+  is run.
+- Model background work honestly: a `schedule` on jobs and workers, a `POLL`
+  connection for anything that checks on a timer.
 - Give every service a capacity model, and check the template serves its rated
   load without dropping traffic — `src/lib/__tests__/templates.test.ts` enforces
   this for every built-in template.
@@ -226,29 +251,64 @@ the AI to be able to use them.
 - Node state is the source of truth for the document. Anything transient
   (hover, run marks, drag previews) must be merged at render time, never written
   into node state — persisted state ends up in undo history, autosave, exported
-  JSON and share links.
+  JSON and share links. `src/lib/canvas-decorate.ts` is where that merge happens.
+- **Keep object identity.** React Flow skips a node or edge whose object is the
+  same as last time. A change handler that returns a new array of new objects
+  for an unchanged canvas re-renders the whole diagram; return the previous
+  array when nothing changed, and the previous element when *it* did not.
+- **Not every change is an edit.** Pass `{ history: false }` to `setNodes` /
+  `setEdges` for selection, measured sizes and intermediate drag frames, and
+  call `commitHistory()` once when the gesture ends.
+- Read with `useFlow()` only if the component must re-render when the canvas
+  changes. A component that only writes should use `useFlowActions()`.
+- Node and edge components are wrapped in `memo`. Do not read canvas state
+  inside them — pass what they need through `data`.
 
 ## Working on the simulation
 
-`src/lib/flow-execution.ts` is pure and unit-tested — it takes nodes and edges
-and returns a layered `ExecutionPlan`:
+There are two simulators, and all of their logic is pure and unit-tested.
+
+| Module | Job |
+| --- | --- |
+| `flow-ops.ts` | The request model: operations, inference for unlabelled edges, schedules, and `computeSequence`, which numbers every hop |
+| `flow-execution.ts` | Dependency order (Kahn's algorithm), cycle and island detection |
+| `simulation-model.ts` | `compileGraph` (once per edit) → `runCompiled` (per run) → `sweepCompiled` (the ramp) |
+| `sim-engine.ts` | The `graph` / `run` message protocol shared by the worker and the inline fallback |
 
 ```ts
-const plan = computeExecutionPlan(nodes, edges)
-// plan.steps      -> [{ nodes: ["client"], edges: [] }, { nodes: ["api-a","api-b"], edges: ["e1","e2"] }, …]
-// plan.entryPoints / exitPoints / cyclicNodes / isolatedNodes / danglingEdges
+const sequence = computeSequence(nodes, edges)
+// sequence.hops -> [{ step: 1, op: "GET", source, target, path, trigger: "on request" }, …]
+
+const graph = compileGraph(nodes, edges)
+const report = runCompiled(graph, params)
+// report.metrics[nodeId], report.edges[edgeId], report.summary
 ```
 
-Rules it must keep:
+Rules they must keep:
 
-- Independent branches share a step (parallel paths animate together).
-- A node runs only after **every** node feeding it has run.
-- Cycles are reported, never hung on — remaining nodes become one final step.
-- Group nodes and edges pointing at missing nodes are excluded, not fatal.
+- **Pure.** No React, no DOM, no `window`. The same file runs in a Web Worker
+  and in Node under Vitest.
+- **Plain data across the boundary.** Whatever the engine returns is posted
+  between threads, so it must survive structured cloning: no functions, no class
+  instances, no `Map` in a report.
+- **Nothing is fatal.** Cycles are reported, never hung on. Group nodes,
+  self-loops and edges pointing at missing nodes are skipped.
+- **Unlabelled diagrams keep working.** A new field needs a default, and a new
+  operation needs an inference story or an explicit opt-in.
+- **Excess goes somewhere specific.** A queue keeps it (backlog), a consumer
+  never took it (lag, pushed back to the queue), anything else sheds it (drops).
+  Do not collapse those into one number.
+- **Validate what you add.** A new persisted field needs a branch in
+  `src/lib/diagram-io.ts` with a maximum, or it will be dropped on import.
 
-Add a test in `src/lib/__tests__/flow-execution.test.ts` for any behaviour you
-change. `use-simulation.ts` owns playback (play/pause/step/speed) and hands the
-canvas two `Map`s of render-time marks.
+Add a test for any behaviour you change — `flow-ops.test.ts` for numbering and
+inference, `simulation-model.test.ts` for the numbers. `templates.test.ts` runs
+every built-in template at its rated load and will tell you if a model change
+quietly broke one.
+
+`use-simulation.ts` owns trace playback (play, pause, step, jump, speed) and
+`use-load-engine.ts` owns the worker; both hand the canvas render-time data and
+neither writes to the document.
 
 ## Working on AI providers
 

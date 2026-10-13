@@ -12,7 +12,7 @@ export const ZomatoTemplate = {
         {
             id: "customer-app",
             type: "nautilusNode",
-            position: { x: 100, y: 0 },
+            position: { x: 190, y: 0 },
             data: {
                 label: "Customer App",
                 icon: "client_mobile",
@@ -24,7 +24,7 @@ export const ZomatoTemplate = {
         {
             id: "restaurant-app",
             type: "nautilusNode",
-            position: { x: 300, y: 0 },
+            position: { x: 570, y: 0 },
             data: {
                 label: "Restaurant App",
                 icon: "client_web",
@@ -36,7 +36,7 @@ export const ZomatoTemplate = {
         {
             id: "driver-app",
             type: "nautilusNode",
-            position: { x: 500, y: 0 },
+            position: { x: 950, y: 0 },
             data: {
                 label: "Driver App",
                 icon: "client_mobile",
@@ -50,7 +50,7 @@ export const ZomatoTemplate = {
         {
             id: "lb",
             type: "nautilusNode",
-            position: { x: 300, y: 150 },
+            position: { x: 570, y: 300 },
             data: {
                 label: "Load Balancer",
                 icon: "load_balancer",
@@ -62,7 +62,7 @@ export const ZomatoTemplate = {
         {
             id: "api-gateway",
             type: "nautilusNode",
-            position: { x: 300, y: 250 },
+            position: { x: 570, y: 500 },
             data: {
                 label: "API Gateway",
                 icon: "api_server",
@@ -76,7 +76,7 @@ export const ZomatoTemplate = {
         {
             id: "restaurant-service",
             type: "nautilusNode",
-            position: { x: 100, y: 400 },
+            position: { x: 190, y: 800 },
             data: {
                 label: "Restaurant Service",
                 icon: "microservice",
@@ -88,7 +88,7 @@ export const ZomatoTemplate = {
         {
             id: "order-service",
             type: "nautilusNode",
-            position: { x: 300, y: 400 },
+            position: { x: 570, y: 800 },
             data: {
                 label: "Order Service",
                 icon: "microservice",
@@ -100,7 +100,7 @@ export const ZomatoTemplate = {
         {
             id: "delivery-service",
             type: "nautilusNode",
-            position: { x: 500, y: 400 },
+            position: { x: 950, y: 800 },
             data: {
                 label: "Delivery Service",
                 icon: "microservice",
@@ -112,7 +112,7 @@ export const ZomatoTemplate = {
         {
             id: "search-service",
             type: "nautilusNode",
-            position: { x: 700, y: 400 },
+            position: { x: 1330, y: 800 },
             data: {
                 label: "Search Service",
                 icon: "microservice",
@@ -126,7 +126,7 @@ export const ZomatoTemplate = {
         {
             id: "restaurant-db",
             type: "nautilusNode",
-            position: { x: 100, y: 550 },
+            position: { x: 190, y: 1100 },
             data: {
                 label: "Restaurant DB",
                 icon: "postgres",
@@ -138,7 +138,7 @@ export const ZomatoTemplate = {
         {
             id: "order-db",
             type: "nautilusNode",
-            position: { x: 300, y: 550 },
+            position: { x: 570, y: 1100 },
             data: {
                 label: "Order DB",
                 icon: "postgres",
@@ -150,7 +150,7 @@ export const ZomatoTemplate = {
         {
             id: "elasticsearch",
             type: "nautilusNode",
-            position: { x: 700, y: 550 },
+            position: { x: 1330, y: 1100 },
             data: {
                 label: "Elasticsearch",
                 icon: "elastic",
@@ -164,7 +164,7 @@ export const ZomatoTemplate = {
         {
             id: "kafka",
             type: "nautilusNode",
-            position: { x: 300, y: 700 },
+            position: { x: 570, y: 1400 },
             data: {
                 label: "Kafka (Events)",
                 icon: "kafka",
@@ -176,7 +176,7 @@ export const ZomatoTemplate = {
         {
             id: "location-tracking",
             type: "nautilusNode",
-            position: { x: 500, y: 700 },
+            position: { x: 950, y: 1400 },
             data: {
                 label: "Location Tracking",
                 icon: "redis",

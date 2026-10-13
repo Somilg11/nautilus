@@ -13,7 +13,7 @@ export const YouTubeTemplate = {
         {
             id: "user",
             type: "nautilusNode",
-            position: { x: 300, y: 0 },
+            position: { x: 570, y: 0 },
             data: {
                 label: "User",
                 icon: "client_web",
@@ -27,7 +27,7 @@ export const YouTubeTemplate = {
         {
             id: "web-server",
             type: "nautilusNode",
-            position: { x: 300, y: 150 },
+            position: { x: 570, y: 300 },
             data: {
                 label: "Web Server",
                 icon: "web_server",
@@ -41,7 +41,7 @@ export const YouTubeTemplate = {
         {
             id: "upload-service",
             type: "nautilusNode",
-            position: { x: 100, y: 300 },
+            position: { x: 190, y: 600 },
             data: {
                 label: "Upload Service",
                 icon: "microservice",
@@ -53,7 +53,7 @@ export const YouTubeTemplate = {
         {
             id: "raw-storage",
             type: "nautilusNode",
-            position: { x: 100, y: 450 },
+            position: { x: 190, y: 900 },
             data: {
                 label: "Raw Storage (S3)",
                 icon: "s3",
@@ -65,7 +65,7 @@ export const YouTubeTemplate = {
         {
             id: "transcoding-queue",
             type: "nautilusNode",
-            position: { x: 100, y: 600 },
+            position: { x: 190, y: 1200 },
             data: {
                 label: "Transcoding Queue",
                 icon: "rabbitmq",
@@ -77,7 +77,7 @@ export const YouTubeTemplate = {
         {
             id: "transcoder",
             type: "nautilusNode",
-            position: { x: 100, y: 750 },
+            position: { x: 190, y: 1500 },
             data: {
                 label: "Transcoder Workers",
                 icon: "microservice",
@@ -89,7 +89,7 @@ export const YouTubeTemplate = {
         {
             id: "processed-storage",
             type: "nautilusNode",
-            position: { x: 300, y: 750 },
+            position: { x: 570, y: 1500 },
             data: {
                 label: "Processed Storage",
                 icon: "s3",
@@ -103,7 +103,7 @@ export const YouTubeTemplate = {
         {
             id: "metadata-service",
             type: "nautilusNode",
-            position: { x: 500, y: 300 },
+            position: { x: 950, y: 600 },
             data: {
                 label: "Metadata Service",
                 icon: "microservice",
@@ -115,7 +115,7 @@ export const YouTubeTemplate = {
         {
             id: "metadata-db",
             type: "nautilusNode",
-            position: { x: 500, y: 450 },
+            position: { x: 950, y: 900 },
             data: {
                 label: "Metadata DB (Vitess)",
                 icon: "mysql",
@@ -127,7 +127,7 @@ export const YouTubeTemplate = {
         {
             id: "metadata-cache",
             type: "nautilusNode",
-            position: { x: 700, y: 450 },
+            position: { x: 1330, y: 900 },
             data: {
                 label: "Cache (Memcached)",
                 icon: "redis",
@@ -139,7 +139,7 @@ export const YouTubeTemplate = {
         {
             id: "cdn",
             type: "nautilusNode",
-            position: { x: 500, y: 600 },
+            position: { x: 950, y: 1200 },
             data: {
                 label: "CDN (Edge Locations)",
                 icon: "cdn",

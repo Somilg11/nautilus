@@ -1,5 +1,6 @@
 // components/nodes/node-icons.tsx
 import { JSX } from "react"
+import { FaClock, FaCogs } from "react-icons/fa"
 
 /* ===============================
    CLIENTS
@@ -214,6 +215,8 @@ export const NodeIcons: Record<string, JSX.Element> = {
 
   /* ------------------ Misc ------------------ */
   orchestrator: <FaTools />,
+  worker: <FaCogs />,
+  cron: <FaClock />,
   cd: <FaRocket />,
   ci: <FaRocket />,
 }

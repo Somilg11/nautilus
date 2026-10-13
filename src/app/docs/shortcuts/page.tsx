@@ -36,11 +36,16 @@ export default function ShortcutsPage() {
             [<Keys key="7" combo={["←", "→", "↑", "↓"]} />, "Nudge selection by 1px"],
             [<Keys key="8" combo={["Shift", "arrow"]} />, "Nudge selection by 10px"],
             [<Keys key="9" combo={["Shift", "click"]} />, "Add a node to the selection"],
+            [<Keys key="10" combo={["⌘/Ctrl", "Z"]} />, "Undo"],
+            [<Keys key="11" combo={["⌘/Ctrl", "Shift", "Z"]} />, "Redo"],
+            [<Keys key="12" combo={["Ctrl", "Y"]} />, "Redo"],
           ]}
         />
         <P>
-          Undo and redo are in the toolbar and follow the platform convention
-          (⌘Z / ⌘⇧Z). History holds the last 50 edits of the current session.
+          Undo and redo are also buttons in the toolbar. History holds the last
+          50 edits of the current session; dragging a node counts as one edit
+          however far it moves, and selecting something is not an edit at all.
+          Inside a text field the same keys undo your typing, not the canvas.
         </P>
       </Section>
 

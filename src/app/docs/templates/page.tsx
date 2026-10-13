@@ -46,10 +46,18 @@ export default function TemplatesPage() {
 
       <Section title="Reading a template well">
         <P>
-          Load one, then press Run. The simulation shows you the dependency order
+          Load one, then press Run. The trace replays the requests in the order
           the author intended — usually more informative than the picture alone.
           Click through the nodes and read their descriptions; that is where the
           reasoning lives.
+        </P>
+        <P>
+          Then open the load playground. Every template ships with a capacity
+          model, rough cloud list prices and the load it was designed for, so
+          it serves its own traffic cleanly — and the Ramp tab shows how much
+          further it would go before something gives out. The microservices
+          template also includes a cron job and a polling connection as
+          examples of work nobody calls.
         </P>
       </Section>
 

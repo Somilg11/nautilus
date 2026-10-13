@@ -27,6 +27,20 @@ export async function ensureBuild() {
   if (existsSync(path.join(ROOT, ".next", "BUILD_ID"))) return
   console.log("Nautilus: no production build found, building once…")
   await run(["build"], "next build")
+  await tightenPolicy()
+}
+
+/** Same post-build step as `npm run build`: pin script-src to hashes. */
+function tightenPolicy() {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [path.join(ROOT, "scripts", "csp-hashes.mjs")], {
+      cwd: ROOT,
+      stdio: "inherit",
+    })
+    // The build still works with the default policy, so never block startup.
+    child.on("error", () => resolve())
+    child.on("exit", () => resolve())
+  })
 }
 
 /** True when nothing is listening on the port yet. */

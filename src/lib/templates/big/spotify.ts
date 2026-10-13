@@ -12,7 +12,7 @@ export const SpotifyTemplate = {
     {
       id: "client-mobile",
       type: "nautilusNode",
-      position: { x: 200, y: 0 },
+      position: { x: 380, y: 0 },
       data: {
         label: "Mobile App",
         icon: "client_mobile",
@@ -24,7 +24,7 @@ export const SpotifyTemplate = {
     {
       id: "client-desktop",
       type: "nautilusNode",
-      position: { x: 400, y: 0 },
+      position: { x: 760, y: 0 },
       data: {
         label: "Desktop App",
         icon: "client_web",
@@ -38,7 +38,7 @@ export const SpotifyTemplate = {
     {
       id: "access-point",
       type: "nautilusNode",
-      position: { x: 300, y: 150 },
+      position: { x: 570, y: 300 },
       data: {
         label: "Access Point (Gateway)",
         icon: "api_server",
@@ -52,7 +52,7 @@ export const SpotifyTemplate = {
     {
       id: "cdn",
       type: "nautilusNode",
-      position: { x: 600, y: 150 },
+      position: { x: 1140, y: 300 },
       data: {
         label: "CDN (Audio Files)",
         icon: "cdn",
@@ -66,7 +66,7 @@ export const SpotifyTemplate = {
     {
       id: "playlist-service",
       type: "nautilusNode",
-      position: { x: 100, y: 300 },
+      position: { x: 190, y: 600 },
       data: {
         label: "Playlist Service",
         icon: "microservice",
@@ -78,7 +78,7 @@ export const SpotifyTemplate = {
     {
       id: "search-service",
       type: "nautilusNode",
-      position: { x: 300, y: 300 },
+      position: { x: 570, y: 600 },
       data: {
         label: "Search Service",
         icon: "microservice",
@@ -90,7 +90,7 @@ export const SpotifyTemplate = {
     {
       id: "player-service",
       type: "nautilusNode",
-      position: { x: 500, y: 300 },
+      position: { x: 950, y: 600 },
       data: {
         label: "Player Service",
         icon: "microservice",
@@ -104,7 +104,7 @@ export const SpotifyTemplate = {
     {
       id: "cassandra-cluster",
       type: "nautilusNode",
-      position: { x: 200, y: 450 },
+      position: { x: 380, y: 900 },
       data: {
         label: "Cassandra Cluster",
         icon: "cassandra",
@@ -116,7 +116,7 @@ export const SpotifyTemplate = {
     {
       id: "elasticsearch",
       type: "nautilusNode",
-      position: { x: 400, y: 450 },
+      position: { x: 760, y: 900 },
       data: {
         label: "Elasticsearch",
         icon: "elastic",
@@ -130,7 +130,7 @@ export const SpotifyTemplate = {
     {
       id: "kafka",
       type: "nautilusNode",
-      position: { x: 300, y: 600 },
+      position: { x: 570, y: 1200 },
       data: {
         label: "Log Aggregation (Kafka)",
         icon: "kafka",
@@ -142,7 +142,7 @@ export const SpotifyTemplate = {
     {
       id: "hadoop",
       type: "nautilusNode",
-      position: { x: 300, y: 750 },
+      position: { x: 570, y: 1500 },
       data: {
         label: "Hadoop (Analytics)",
         icon: "database_sql",

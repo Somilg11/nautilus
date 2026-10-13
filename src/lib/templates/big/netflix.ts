@@ -12,7 +12,7 @@ export const NetflixTemplate = {
         {
             id: "client-tv",
             type: "nautilusNode",
-            position: { x: 100, y: 0 },
+            position: { x: 190, y: 0 },
             data: {
                 label: "Smart TV",
                 icon: "client_web",
@@ -24,7 +24,7 @@ export const NetflixTemplate = {
         {
             id: "client-mobile",
             type: "nautilusNode",
-            position: { x: 500, y: 0 },
+            position: { x: 950, y: 0 },
             data: {
                 label: "Mobile App",
                 icon: "client_mobile",
@@ -38,7 +38,7 @@ export const NetflixTemplate = {
         {
             id: "open-connect",
             type: "nautilusNode",
-            position: { x: 300, y: 150 },
+            position: { x: 570, y: 300 },
             data: {
                 label: "Open Connect (CDN)",
                 icon: "cdn",
@@ -52,7 +52,7 @@ export const NetflixTemplate = {
         {
             id: "api-gateway",
             type: "nautilusNode",
-            position: { x: 300, y: 300 },
+            position: { x: 570, y: 600 },
             data: {
                 label: "Zuul Gateway",
                 icon: "api_server",
@@ -66,7 +66,7 @@ export const NetflixTemplate = {
         {
             id: "playback-service",
             type: "nautilusNode",
-            position: { x: 100, y: 450 },
+            position: { x: 190, y: 900 },
             data: {
                 label: "Playback Service",
                 icon: "microservice",
@@ -78,7 +78,7 @@ export const NetflixTemplate = {
         {
             id: "steering-service",
             type: "nautilusNode",
-            position: { x: 300, y: 450 },
+            position: { x: 570, y: 900 },
             data: {
                 label: "Steering Service",
                 icon: "microservice",
@@ -90,7 +90,7 @@ export const NetflixTemplate = {
         {
             id: "recommendation",
             type: "nautilusNode",
-            position: { x: 500, y: 450 },
+            position: { x: 950, y: 900 },
             data: {
                 label: "Recommendations",
                 icon: "microservice",
@@ -104,7 +104,7 @@ export const NetflixTemplate = {
         {
             id: "evcache",
             type: "nautilusNode",
-            position: { x: 300, y: 600 },
+            position: { x: 570, y: 1200 },
             data: {
                 label: "EVCache (Memcached)",
                 icon: "redis",
@@ -116,7 +116,7 @@ export const NetflixTemplate = {
         {
             id: "cassandra",
             type: "nautilusNode",
-            position: { x: 100, y: 750 },
+            position: { x: 190, y: 1500 },
             data: {
                 label: "Cassandra (User History)",
                 icon: "cassandra",
@@ -128,7 +128,7 @@ export const NetflixTemplate = {
         {
             id: "mysql",
             type: "nautilusNode",
-            position: { x: 500, y: 750 },
+            position: { x: 950, y: 1500 },
             data: {
                 label: "MySQL (Billing/Account)",
                 icon: "mysql",
@@ -142,7 +142,7 @@ export const NetflixTemplate = {
         {
             id: "kafka",
             type: "nautilusNode",
-            position: { x: 700, y: 450 },
+            position: { x: 1330, y: 900 },
             data: {
                 label: "Kafka (Data Pipeline)",
                 icon: "kafka",
@@ -154,7 +154,7 @@ export const NetflixTemplate = {
         {
             id: "spark",
             type: "nautilusNode",
-            position: { x: 700, y: 600 },
+            position: { x: 1330, y: 1200 },
             data: {
                 label: "Spark (Big Data)",
                 icon: "elastic",

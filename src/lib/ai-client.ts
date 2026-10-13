@@ -63,7 +63,7 @@ export type AIResponse =
 export type DiagramContext = {
   name?: string
   nodes: { id: string; data?: any }[]
-  edges: { source: string; target: string }[]
+  edges: { source: string; target: string; op?: string; path?: string }[]
 }
 
 /**
@@ -121,7 +121,7 @@ function describeDiagram(diagram?: DiagramContext): string {
 
   const edges = diagram.edges
     .slice(0, 120)
-    .map((e) => `- ${e.source} -> ${e.target}`)
+    .map((e) => `- ${e.source} -> ${e.target}${e.op ? ` [${e.op}${e.path ? ` ${e.path}` : ""}]` : ""}`)
     .join("\n")
 
   return `Current canvas${diagram.name ? ` ("${diagram.name}")` : ""}:

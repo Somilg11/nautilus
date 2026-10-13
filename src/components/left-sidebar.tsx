@@ -20,7 +20,7 @@ import {
 import { FaUser, FaDesktop, FaMobileAlt } from "react-icons/fa"
 
 /* Compute / Servers */
-import { FaServer, FaTools, FaNetworkWired } from "react-icons/fa"
+import { FaServer, FaCogs, FaClock, FaNetworkWired } from "react-icons/fa"
 import { SiDocker, SiKubernetes, SiNginx, SiTraefikproxy } from "react-icons/si"
 
 /* Databases / Storage */
@@ -124,7 +124,8 @@ const CATEGORIES: Category[] = [
       { id: "k8s", label: "Kubernetes Pod", icon: SiKubernetes },
       { id: "nginx", label: "Nginx Proxy", icon: SiNginx },
       { id: "traefik", label: "Traefik Proxy", icon: SiTraefikproxy },
-      { id: "worker", label: "Worker Service", icon: FaTools },
+      { id: "worker", label: "Worker (runs continuously)", icon: FaCogs },
+      { id: "cron", label: "Cron Job (scheduled)", icon: FaClock },
     ],
   },
 

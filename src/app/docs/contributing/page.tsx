@@ -43,7 +43,8 @@ npm run lint && npm run typecheck && npm test && npm run build`}
             ["Icons", <Code key="2">src/components/nodes/node-icons.tsx</Code>, "Easy"],
             ["Docs", <Code key="3">docs/, src/app/docs/</Code>, "Easy"],
             ["Canvas behaviour", <Code key="4">src/components/canvas.tsx</Code>, "Medium"],
-            ["Simulation engine", <Code key="5">src/lib/flow-execution.ts</Code>, "Involved"],
+            ["Request model", <Code key="5">src/lib/flow-ops.ts</Code>, "Involved"],
+            ["Load model", <Code key="7">src/lib/simulation-model.ts</Code>, "Involved"],
             ["AI providers", <Code key="6">src/lib/ai-client.ts</Code>, "Involved"],
           ]}
         />
@@ -55,6 +56,8 @@ npm run lint && npm run typecheck && npm test && npm run build`}
           rows={[
             ["One listener per nautilus-* event", "Toolbar buttons dispatch window events. Binding one twice is how paste once inserted two copies of everything."],
             ["Never persist transient state", "Anything written into node data lands in undo history, autosave, exports and share links."],
+            ["Keep the simulators pure", "No React, no DOM. The same code runs in a Web Worker and in Node under test."],
+            ["Keep object identity", "React Flow skips a node or edge whose object is unchanged. Returning fresh objects for an unchanged canvas re-renders the whole diagram."],
             ["Validate untrusted input", "Imports, share links and AI output all pass through src/lib/diagram-io.ts."],
             ["Use reactflow v11", "react-flow-renderer is the unmaintained v10 package and pins React to 18."],
             ["Conventional commits", "feat:, fix:, docs:, refactor:, test:, chore:"],
@@ -64,9 +67,10 @@ npm run lint && npm run typecheck && npm test && npm run build`}
 
       <Section title="Testing">
         <P>
-          The pure parts — the execution planner and the diagram validator — are
-          unit-tested with Vitest. Any change to their behaviour should come with
-          a test.
+          The pure parts — the request model, the load model, the engine
+          protocol, the planner and the diagram validator — are unit-tested with
+          Vitest, and every built-in template is run at its rated load. Any
+          change to their behaviour should come with a test.
         </P>
         <CodeBlock code={`npm test           # single run
 npm run test:watch # watch mode`} />

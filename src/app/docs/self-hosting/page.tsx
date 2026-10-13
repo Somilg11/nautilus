@@ -50,13 +50,25 @@ npm start          # http://localhost:3000`}
         />
       </Section>
 
+      <Section title="What it costs to run">
+        <P>
+          Static files. Every page is prerendered and there are no API routes,
+          so the host never executes anything per visitor. Simulations run in a
+          Web Worker in each visitor&apos;s own browser, and AI requests go from
+          their browser straight to the provider — neither touches your
+          deployment.
+        </P>
+      </Section>
+
       <Section title="Security notes for operators">
         <List
           items={[
             "Serve over HTTPS — the app sends Strict-Transport-Security on every response.",
             "Don't strip the app's response headers at your proxy. The Content-Security-Policy is what stops an injected script from reading visitors' API keys.",
-            "A static export cannot send those headers — re-create them at the CDN layer, copying the policy from next.config.ts verbatim.",
+            "Build with npm run build, not a bare next build: it finishes by pinning script-src to the hashes of the inline scripts it emitted, so injected scripts cannot run.",
+            "A static export cannot send those headers — re-create them at the CDN layer, copying the policy from a response of a normal build so it includes that build's script hashes.",
             "Adding an analytics or embed script means adding its host to connect-src / script-src. Add the specific host, never a wildcard.",
+            "If you rewrite the policy, keep worker-src 'self' blob: — without it the load playground falls back to the main thread.",
           ]}
         />
         <Callout title="Deploying for a team?">

@@ -3,12 +3,12 @@ import { Callout, Code, CodeBlock, DocsPager, List, P, PageHeader, Section, Tabl
 export const metadata = {
   title: "Flow simulation — Nautilus Docs",
   description:
-    "Run flow simulations in Nautilus to watch requests traverse your architecture step by step and find bottlenecks before you build it.",
+    "Number every request in your architecture, replay it step by step, and load-test the design in your own browser — cron jobs, workers and polling included.",
   alternates: { canonical: "/docs/simulation" },
   openGraph: {
     title: "Flow simulation — Nautilus Docs",
     description:
-      "Run flow simulations in Nautilus to watch requests traverse your architecture step by step and find bottlenecks before you build it.",
+      "Number every request in your architecture, replay it step by step, and load-test the design in your own browser — cron jobs, workers and polling included.",
     url: "/docs/simulation",
     type: "article",
   },
@@ -20,23 +20,94 @@ export default function SimulationPage() {
       <PageHeader
         eyebrow="Features"
         title="Flow simulation"
-        lead="Two simulators over the same graph: Trace walks it step by step, and the load playground pushes traffic through it to find the bottleneck."
+        lead="Every connection is a numbered request. Trace replays them one at a time; the load playground pushes traffic through them to find the bottleneck — all inside your browser."
       />
 
-      <Section title="How the plan is built">
+      <Section title="Every connection is a request">
         <P>
-          Nautilus derives a layered execution plan from the graph. Entry points
-          — nodes with no incoming edges — run first. Each following step
-          contains every node whose upstream dependencies have all completed, so
-          parallel branches animate together instead of being forced into an
-          arbitrary single-file order.
+          A connection is not just &ldquo;A depends on B&rdquo; — it is a
+          specific interaction, and it is drawn from the component that
+          initiates it to the one that receives it. Select a connection (or
+          double-click it) to set what it does in{" "}
+          <strong>Properties</strong>: the operation, the endpoint or topic, a
+          timeout, and how much of the traffic takes it.
+        </P>
+        <Table
+          head={["Operation", "Who waits", "Use it for"]}
+          rows={[
+            ["GET · POST · PUT · PATCH · DELETE · CALL", "The caller waits for the reply", "HTTP and RPC between services"],
+            ["READ · WRITE · QUERY", "The caller waits", "Cache and database access"],
+            ["PUBLISH · EVENT", "Nobody — it is a hand-off", "Producing to a queue or topic; fire-and-forget calls and webhooks"],
+            ["CONSUME", "The consumer pulls at its own pace", "Queue → consumer. What it cannot take stays in the queue"],
+            ["POLL", "The source asks on a timer", "A service checking a table or an API every few seconds"],
+          ]}
+        />
+        <P>
+          Connections you have not labelled are inferred from what they join —
+          into a queue is a <Code>PUBLISH</Code>, out of one is a{" "}
+          <Code>CONSUME</Code>, into a database is a <Code>QUERY</Code> — so an
+          existing diagram reads correctly without annotating every line. Solid
+          lines are calls somebody waits on; dashed lines are hand-offs and
+          consumers; dotted lines are polls.
+        </P>
+      </Section>
+
+      <Section title="Numbering: which request goes where">
+        <P>
+          Every connection carries a step number. A request is followed
+          depth-first through the calls its handler waits on, because that is
+          the order they are made in. A publish is numbered where it is issued,
+          but what happens on the far side of the queue is numbered after the
+          request that caused it has finished — which is how it plays out in
+          production. Cron jobs, worker loops and pollers come last, as flows
+          of their own.
         </P>
         <CodeBlock
-          caption="Example: client → (api-a, api-b) → db"
-          code={`step 1   client
-step 2   api-a, api-b      ← both, at the same time
-step 3   db                ← only after both APIs have run`}
+          caption="Example: an order is placed, then processed in the background"
+          code={`1  GET      Client → Gateway        /api            on request
+2  POST     Gateway → Orders        /orders         on request
+3  WRITE    Orders → Orders DB      orders          on request
+4  PUBLISH  Orders → Kafka          order.created   on request
+5  CONSUME  Kafka → Notifier        order.created   on message
+6  QUERY    Reconcile job → Orders DB               cron every 5m`}
         />
+        <P>
+          Sibling calls run in the order the connections were drawn. To change
+          it, set <strong>Call order</strong> on the connection — lower runs
+          first. The <strong>Calls</strong> tab of the simulation panel lists
+          every hop with what triggers it; click a row to jump to that
+          connection.
+        </P>
+      </Section>
+
+      <Section title="Cron jobs, workers and polling">
+        <P>
+          Not everything waits to be called. In{" "}
+          <strong>Properties ▸ Runs on its own</strong> a component can be made
+          a <strong>cron job</strong> — it fires once per interval however many
+          replicas exist — or a <strong>worker loop</strong>, which every
+          replica runs continuously, so its rate grows with the replica count.
+          The palette has both ready-made under Compute.
+        </P>
+        <P>
+          A <Code>POLL</Code> connection is the same idea for a single call: the
+          source hits the target every <em>n</em> seconds from each replica,
+          whatever traffic it happens to be serving.
+        </P>
+        <Callout title="Scheduled load does not scale with your users">
+          Self-starting components are never treated as entry points, so the
+          offered load is not split onto them. Their traffic is added on top and
+          reported separately — it is still there at 3am with nobody online.
+        </Callout>
+      </Section>
+
+      <Section title="Trace">
+        <P>
+          <strong>Run</strong> replays the numbered requests one at a time. The
+          connection in flight lights up along with the two components it
+          joins, and the panel names it: who is calling whom, with what, whether
+          anyone is waiting, and what set it off.
+        </P>
       </Section>
 
       <Section title="Controls">
@@ -44,10 +115,11 @@ step 3   db                ← only after both APIs have run`}
           head={["Control", "Purpose"]}
           rows={[
             ["Play / Pause", "Start or hold the run"],
-            ["Step", "Advance exactly one step and pause"],
+            ["Step forward / back", "Move exactly one request and pause"],
+            ["Click a row", "Jump straight to that request"],
             ["Stop", "End the run and clear all highlighting"],
             ["0.5× – 4×", "Playback speed"],
-            ["Progress", "Step n of m, and how many nodes are active right now"],
+            ["Progress", "Request n of m, and the call being made right now"],
           ]}
         />
       </Section>
@@ -58,8 +130,8 @@ step 3   db                ← only after both APIs have run`}
         </P>
         <List
           items={[
-            "Cycles — nodes in a loop can never have every dependency satisfied, so they are named and run together as a final step.",
-            "Dangling connections — edges pointing at a deleted node are skipped rather than aborting the run.",
+            "Cycles — each node in a loop is visited once and then the loop is cut, so a run always ends.",
+            "Flows nothing starts — every node has an incoming connection and none runs on a schedule.",
             "Isolated nodes — components with no connections at all.",
             "An empty canvas, instead of an animation that appears to do nothing.",
           ]}
@@ -71,6 +143,34 @@ step 3   db                ← only after both APIs have run`}
         history, autosave, exported JSON or share links — so a run can&apos;t
         dirty your diagram, and stopping is instant.
       </Callout>
+
+      <Section title="Runs on your machine">
+        <P>
+          Nautilus has no simulation backend. When you open the load playground
+          the diagram is compiled once into a compact form inside a{" "}
+          <strong>Web Worker</strong> — a background thread of your own browser
+          — and every run after that only sends the load parameters. Dragging
+          the slider re-runs the model and its 24-point ramp without re-planning
+          the graph, without blocking the canvas, and without a single network
+          request. The panel shows where the last run executed and how long it
+          took.
+        </P>
+        <List
+          items={[
+            "Moving, selecting or resizing nodes does not re-run anything — only changes the model can see do.",
+            "One run is in flight at a time; a burst of slider events collapses into the latest one, so a slow machine never builds up a queue of stale work.",
+            "Closing the playground terminates the worker and frees its memory.",
+            "If workers are blocked, the same engine runs in the page instead.",
+          ]}
+        />
+        <P>
+          Large diagrams also drop their decorative effects automatically:
+          off-screen nodes are not mounted, request badges are hidden when you
+          zoom far enough out that they could not be read, and animated edges
+          and glows are switched off past a couple of hundred elements or on a
+          device that asks for reduced motion.
+        </P>
+      </Section>
 
       <Section title="Load playground">
         <P>
@@ -94,6 +194,7 @@ step 3   db                ← only after both APIs have run`}
             ["Cost / hour ($)", "Price of one replica per hour. Monthly cost is cost × replicas × 730."],
             ["Cache hit (%)", "Share answered here and not forwarded, so a backing store only sees the misses."],
             ["Failure", "Failure injection — the node serves nothing until restored."],
+            ["Runs on its own", "Cron job or worker loop, with its interval and jobs per run."],
           ]}
         />
 
@@ -122,6 +223,8 @@ step 3   db                ← only after both APIs have run`}
             ["% served", "Share of every call in the graph — internal hops included — that was served rather than shed."],
             ["Dropped", "Requests per second shed anywhere, summed."],
             ["Slowest path", "Worst entry-to-exit latency, queueing included, checked against your timeout."],
+            ["Over their timeout", "Connections whose p95 response is slower than the timeout set on that connection."],
+            ["Self-generated load", "Traffic from cron jobs, worker loops and polls — present whether or not users are."],
           ]}
         />
 
@@ -179,8 +282,9 @@ step 3   db                ← only after both APIs have run`}
             Publishing to a queue is a hand-off, not a call: the producer&apos;s
             request ends there. Nautilus treats any edge into a buffering node as
             asynchronous, so a slow consumer never inflates the latency of the
-            request that triggered it. Set <Code>sim.async</Code> on any other
-            edge to say the same thing about a fire-and-forget call.
+            request that triggered it. Mark any other connection as an{" "}
+            <Code>EVENT</Code> to say the same thing about a fire-and-forget
+            call.
           </P>
           <P>
             The timeout budget is checked against the{" "}
@@ -200,6 +304,13 @@ step 3   db                ← only after both APIs have run`}
             Kafka, RabbitMQ, SQS and generic queue icons are treated this way
             automatically; anything else can opt in with{" "}
             <Code>sim.queue</Code>.
+          </P>
+          <P>
+            The same holds on the way out. A consumer that cannot keep up does
+            not drop messages it never took — they stay in the queue it reads
+            from. The consumer shows as saturated and lagging, the queue shows
+            the backlog, and the capacity plan tells you how many consumers
+            would clear it.
           </P>
         </Section>
 
@@ -253,7 +364,8 @@ step 3   db                ← only after both APIs have run`}
         <Section title="How the numbers are produced">
           <List
             items={[
-              "Traffic enters at nodes with no incoming edges and flows in dependency order.",
+              "User traffic enters at nodes with no incoming edges that are not self-starting, and flows in dependency order.",
+              "Cron jobs, worker loops and polls add their own rate on top, independent of the offered load.",
               "A node accepts min(offered, capacity × replicas); the rest is shed and reported as dropped.",
               "Queue wait uses an M/M/1 approximation, so latency climbs sharply as utilisation approaches 100%.",
               "Downstream load is what actually got served, after drops and baseline errors.",
@@ -261,18 +373,28 @@ step 3   db                ← only after both APIs have run`}
             ]}
           />
           <P>
-            Edges carry two optional fields — <Code>share</Code> (the fraction of
-            requests that take this edge, for load balancing or cache-miss paths)
-            and <Code>fanout</Code> (calls made per request). Both default to 1
-            and can be set in exported JSON under <Code>edge.data.sim</Code>.
+            Each call also reports how long its caller waits: the target plus
+            everything the target itself waits on. A publish only waits for the
+            broker. Set a timeout on a connection and it is flagged when the
+            p95 of that wait is slower.
+          </P>
+          <P>
+            Connections carry <Code>share</Code> (the fraction of requests that
+            take this path, for load balancing or cache misses) and{" "}
+            <Code>fanout</Code> (calls made per request). Both default to 1 and
+            are edited on the connection; in exported JSON they live under{" "}
+            <Code>edge.data.sim</Code>, beside the request itself in{" "}
+            <Code>edge.data.flow</Code>.
           </P>
         </Section>
       </Section>
 
       <Section title="Limits">
         <P>
-          Both simulators are models, not measurements. Trace shows dependency
-          order. The load playground is a steady-state analytical model — it does
+          Both simulators are models, not measurements. Nothing is ever sent to
+          the endpoints you name — they describe the design, they are not
+          called. Trace shows the order requests are made in. The load
+          playground is a steady-state analytical model — it does
           not simulate retries, circuit breakers, bursts, cold starts or
           per-request variance, and traffic through a cycle is undefined. Use it
           to find capacity mistakes and bottlenecks, not to predict a p99.

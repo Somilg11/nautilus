@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { isFlowOp } from "./flow-ops"
+
 /**
  * Validation for diagrams coming from outside the app: imported JSON files,
  * `?d=` share links and localStorage written by an older version.
@@ -76,10 +78,10 @@ function simNumber(value: unknown, max: number): number | undefined {
 }
 
 /** Node capacity model. Undefined fields fall back to the engine defaults. */
-function sanitizeNodeSim(raw: any): Record<string, number | boolean> | undefined {
+function sanitizeNodeSim(raw: any): Record<string, any> | undefined {
   if (!raw || typeof raw !== "object") return undefined
 
-  const sim: Record<string, number | boolean> = {}
+  const sim: Record<string, any> = {}
   const capacity = simNumber(raw.capacity, 10_000_000)
   const replicas = simNumber(raw.replicas, 10_000)
   const latencyMs = simNumber(raw.latencyMs, 600_000)
@@ -97,7 +99,45 @@ function sanitizeNodeSim(raw: any): Record<string, number | boolean> | undefined
   if (hitRate !== undefined) sim.hitRate = hitRate
   if (typeof raw.queue === "boolean") sim.queue = raw.queue
 
+  const schedule = sanitizeSchedule(raw.schedule)
+  if (schedule) sim.schedule = schedule
+
   return Object.keys(sim).length > 0 ? sim : undefined
+}
+
+/** Longest interval a schedule or poll may use: one week. */
+const MAX_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000
+
+/** Cron job or worker loop. An interval of zero would mean infinite load. */
+function sanitizeSchedule(raw: any) {
+  if (!raw || typeof raw !== "object") return undefined
+  if (raw.kind !== "cron" && raw.kind !== "worker") return undefined
+
+  const everyMs = simNumber(raw.everyMs, MAX_INTERVAL_MS)
+  if (everyMs === undefined || everyMs < 1) return undefined
+
+  const batch = simNumber(raw.batch, 10_000_000)
+  return { kind: raw.kind as "cron" | "worker", everyMs, ...(batch !== undefined ? { batch } : {}) }
+}
+
+/** What a connection does: the request type, where it goes, and how often. */
+function sanitizeEdgeFlow(raw: any): Record<string, number | string> | undefined {
+  if (!raw || typeof raw !== "object") return undefined
+
+  const flow: Record<string, number | string> = {}
+  if (isFlowOp(raw.op)) flow.op = raw.op
+
+  const path = str(raw.path, 200)
+  if (path) flow.path = path
+
+  const order = simNumber(raw.order, 100_000)
+  const intervalMs = simNumber(raw.intervalMs, MAX_INTERVAL_MS)
+  const timeoutMs = simNumber(raw.timeoutMs, 600_000)
+  if (order !== undefined) flow.order = order
+  if (intervalMs !== undefined && intervalMs >= 1) flow.intervalMs = intervalMs
+  if (timeoutMs !== undefined && timeoutMs > 0) flow.timeoutMs = timeoutMs
+
+  return Object.keys(flow).length > 0 ? flow : undefined
 }
 
 /**
@@ -195,6 +235,10 @@ function sanitizeEdge(raw: any, index: number, nodeIds: Set<string>): DiagramEdg
   if (!source || !target || !nodeIds.has(source) || !nodeIds.has(target)) return null
 
   const sim = sanitizeEdgeSim(raw.data?.sim)
+  const flow = sanitizeEdgeFlow(raw.data?.flow)
+  const data: Record<string, any> = {}
+  if (sim) data.sim = sim
+  if (flow) data.flow = flow
 
   return {
     id: str(raw.id, 128) ?? `e${index}`,
@@ -206,7 +250,7 @@ function sanitizeEdge(raw: any, index: number, nodeIds: Set<string>): DiagramEdg
     animated: raw.animated === true,
     label: str(raw.label, 200),
     markerEnd: raw.markerEnd && typeof raw.markerEnd === "object" ? raw.markerEnd : undefined,
-    data: sim ? { sim } : undefined,
+    data: sim || flow ? data : undefined,
   }
 }
 
