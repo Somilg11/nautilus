@@ -2,7 +2,16 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react"
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import type { Edge, Node, ReactFlowInstance } from "reactflow"
 import LZString from "lz-string"
 import { sanitizeDiagram } from "./diagram-io"
@@ -10,11 +19,20 @@ import { DEFAULT_LOAD_PARAMS, type LoadParams } from "./simulation-model"
 
 type SelectionMode = "select" | "pan"
 
+/**
+ * `history: false` applies a change without an undo entry. Selection, measured
+ * sizes and the intermediate frames of a drag are not edits, and recording them
+ * used to cost a full snapshot of the diagram per mouse move.
+ */
+type SetOptions = { history?: boolean }
+
 type FlowContextType = {
   nodes: Node<any>[]
-  setNodes: (updater: React.SetStateAction<Node<any>[]>) => void
+  setNodes: (updater: React.SetStateAction<Node<any>[]>, options?: SetOptions) => void
   edges: Edge<any>[]
-  setEdges: (updater: React.SetStateAction<Edge<any>[]>) => void
+  setEdges: (updater: React.SetStateAction<Edge<any>[]>, options?: SetOptions) => void
+  /** Record the current canvas as one undo step (used when a drag ends). */
+  commitHistory: () => void
   reactFlowInstance: ReactFlowInstance | null
   setReactFlowInstance: (r: ReactFlowInstance | null) => void
   selectedNodeId: string | null
@@ -57,17 +75,80 @@ type FlowContextType = {
   zoomOut: () => void
 }
 
-const FlowContext = createContext<FlowContextType | undefined>(undefined)
+/**
+ * Canvas state is published through a store rather than as a context value.
+ *
+ * A context value that changes on every mouse move makes React walk the
+ * subtree of every memoised component below it looking for consumers — which,
+ * under a canvas, is every node and edge on screen, sixty times a second
+ * during a drag. With a store the context itself never changes: components
+ * that read canvas state subscribe to it, and nothing else is visited.
+ */
+type FlowStore = {
+  get: () => FlowContextType
+  subscribe: (listener: () => void) => () => void
+  publish: (value: FlowContextType) => void
+  notify: () => void
+  /** Setters with a stable identity, for components that only write. */
+  actions: FlowActions
+}
+
+export type FlowActions = Pick<FlowContextType, "setNodes" | "setEdges" | "setLoadParams">
+
+function createFlowStore(): FlowStore {
+  let current: FlowContextType | null = null
+  const listeners = new Set<() => void>()
+
+  const get = () => {
+    if (!current) throw new Error("Flow state read before FlowProvider rendered")
+    return current
+  }
+
+  return {
+    get,
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    publish(value) {
+      current = value
+    },
+    notify() {
+      listeners.forEach((listener) => listener())
+    },
+    actions: {
+      setNodes: (updater, options) => get().setNodes(updater, options),
+      setEdges: (updater, options) => get().setEdges(updater, options),
+      setLoadParams: (params) => get().setLoadParams(params),
+    },
+  }
+}
+
+const FlowContext = createContext<FlowStore | undefined>(undefined)
 
 const STORAGE_KEY = "nautilus-canvas-v1"
 const NAME_KEY = "nautilus-project-name"
 const HISTORY_LIMIT = 50
 const PASTE_OFFSET = 24
 
+function useFlowStore() {
+  const store = useContext(FlowContext)
+  if (!store) throw new Error("useFlow must be used inside FlowProvider")
+  return store
+}
+
+/** Canvas state. The calling component re-renders whenever it changes. */
 export function useFlow() {
-  const ctx = useContext(FlowContext)
-  if (!ctx) throw new Error("useFlow must be used inside FlowProvider")
-  return ctx
+  const store = useFlowStore()
+  return useSyncExternalStore(store.subscribe, store.get, store.get)
+}
+
+/**
+ * Canvas setters only. Unlike `useFlow`, this never causes a re-render, so a
+ * component that just loads a template is not redrawn on every drag frame.
+ */
+export function useFlowActions(): FlowActions {
+  return useFlowStore().actions
 }
 
 export function FlowProvider({ children }: { children: React.ReactNode }) {
@@ -107,11 +188,10 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
   ------------------------------ */
 
   function pushHistory(nSnapshot: Node<any>[], eSnapshot: Edge<any>[]) {
+    // Snapshots are immutable arrays, so identity is enough to spot a no-op —
+    // serialising the whole diagram here made every change O(diagram).
     const current = historyRef.current[historyIndexRef.current]
-    const serialize = (s: any) => JSON.stringify(s)
-    if (current && serialize(current.nodes) === serialize(nSnapshot) && serialize(current.edges) === serialize(eSnapshot)) {
-      return
-    }
+    if (current && current.nodes === nSnapshot && current.edges === eSnapshot) return
 
     if (historyIndexRef.current < historyRef.current.length - 1) {
       historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1)
@@ -151,21 +231,25 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     updaters must stay pure, and React invokes them twice in development, which
     used to duplicate history entries and trigger cross-component updates.
   */
-  const setNodes = (updater: React.SetStateAction<Node<any>[]>) => {
+  const setNodes = (updater: React.SetStateAction<Node<any>[]>, options?: SetOptions) => {
     const next = typeof updater === "function" ? (updater as any)(nodesRef.current) : updater
+    if (next === nodesRef.current) return
     nodesRef.current = next
-    pushHistory(next, edgesRef.current)
+    if (options?.history !== false) pushHistory(next, edgesRef.current)
     setIsSaved(false)
     setNodesRaw(next)
   }
 
-  const setEdges = (updater: React.SetStateAction<Edge<any>[]>) => {
+  const setEdges = (updater: React.SetStateAction<Edge<any>[]>, options?: SetOptions) => {
     const next = typeof updater === "function" ? (updater as any)(edgesRef.current) : updater
+    if (next === edgesRef.current) return
     edgesRef.current = next
-    pushHistory(nodesRef.current, next)
+    if (options?.history !== false) pushHistory(nodesRef.current, next)
     setIsSaved(false)
     setEdgesRaw(next)
   }
+
+  const commitHistory = () => pushHistory(nodesRef.current, edgesRef.current)
 
   /* ------------------------------
       Load / save / autosave
@@ -497,6 +581,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       setNodes,
       edges,
       setEdges,
+      commitHistory,
       reactFlowInstance,
       setReactFlowInstance,
       selectedNodeId,
@@ -532,5 +617,14 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
     [nodes, edges, reactFlowInstance, selectedNodeId, projectName, loadParams, isSaved, selectionMode]
   )
 
-  return <FlowContext.Provider value={value}>{children}</FlowContext.Provider>
+  const [store] = useState(createFlowStore)
+
+  // Published during render so children mounting in this same pass can read
+  // it; subscribers that are already mounted are told once it has committed.
+  store.publish(value)
+  useLayoutEffect(() => {
+    store.notify()
+  }, [store, value])
+
+  return <FlowContext.Provider value={store}>{children}</FlowContext.Provider>
 }

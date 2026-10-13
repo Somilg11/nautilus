@@ -136,4 +136,44 @@ describe("round trip", () => {
 
     expect(diagram.sim).toEqual({ targetUtilization: 0.5 })
   })
+
+  it("keeps valid request and schedule settings and drops the rest", () => {
+    const { diagram } = sanitizeDiagram({
+      nodes: [
+        {
+          id: "job",
+          data: {
+            label: "Job",
+            sim: { schedule: { kind: "cron", everyMs: 60000, batch: 10, command: "rm -rf" } },
+          },
+        },
+        // An interval of zero would mean infinite load.
+        { id: "bad", data: { label: "Bad", sim: { schedule: { kind: "cron", everyMs: 0 } } } },
+        { id: "db", data: { label: "DB" } },
+      ],
+      edges: [
+        {
+          id: "e1",
+          source: "job",
+          target: "db",
+          data: {
+            flow: { op: "POLL", path: "orders", intervalMs: 5000, timeoutMs: 800, order: 2, script: "x" },
+            sim: { share: 0.5 },
+          },
+        },
+        { id: "e2", source: "bad", target: "db", data: { flow: { op: "TELEPORT", intervalMs: -1 } } },
+      ],
+    })
+
+    expect(diagram.nodes[0].data.sim).toEqual({
+      schedule: { kind: "cron", everyMs: 60000, batch: 10 },
+    })
+    expect(diagram.nodes[1].data.sim).toBeUndefined()
+
+    expect(diagram.edges[0].data).toEqual({
+      sim: { share: 0.5 },
+      flow: { op: "POLL", path: "orders", intervalMs: 5000, timeoutMs: 800, order: 2 },
+    })
+    expect(diagram.edges[1].data).toBeUndefined()
+  })
 })

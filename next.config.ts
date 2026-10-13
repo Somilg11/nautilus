@@ -9,8 +9,15 @@ import type { NextConfig } from "next";
  * live in localStorage, so a single injected script would be enough to steal
  * them.
  *
- * `unsafe-inline`/`unsafe-eval` in script-src are required by the Next.js dev
- * runtime; they are dropped in production builds below.
+ * `unsafe-eval` in script-src is required by the Next.js dev runtime and is
+ * dropped in production.
+ *
+ * `unsafe-inline` is only the starting point for script-src: Next.js boots
+ * every page with inline scripts, and their content is not known until the
+ * build has finished. `npm run build` then runs scripts/csp-hashes.mjs, which
+ * swaps `'unsafe-inline'` for the exact hashes of those scripts — so the
+ * policy that ships allows no other inline script, without the per-request
+ * server rendering a nonce would need.
  */
 const isDev = process.env.NODE_ENV === "development";
 
@@ -30,6 +37,8 @@ const csp = [
   ]
     .filter(Boolean)
     .join(" "),
+  // The load simulation runs in a same-origin Web Worker.
+  "worker-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

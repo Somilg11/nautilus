@@ -7,9 +7,11 @@ import {
   ContextMenuItem,
 } from "@/components/ui/context-menu"
 
+import { memo } from "react"
+import { Clock, RefreshCw } from "lucide-react"
 import { Handle, Position } from "reactflow"
-import { useFlow } from "@/lib/flow-context"
 import { NodeIcons } from "./node-icons"
+import { formatInterval, type NodeSchedule } from "@/lib/flow-ops"
 import { formatMs, formatRate, type NodeMetrics } from "@/lib/simulation-model"
 
 type NautilusNodeProps = {
@@ -19,6 +21,7 @@ type NautilusNodeProps = {
     description?: string
     color?: string
     icon?: string
+    sim?: { schedule?: NodeSchedule }
     /** Injected at render time while a trace simulation is running. */
     __simStatus?: "active" | "done"
     /** Injected at render time while the load playground is open. */
@@ -58,6 +61,8 @@ function loadClass(metrics?: NodeMetrics) {
       return "sim-node-overloaded"
     case "saturated":
       return "sim-node-saturated"
+    case "backlog":
+      return "sim-node-warn"
     case "warn":
       return "sim-node-warn"
     default:
@@ -72,42 +77,23 @@ function utilizationColor(u: number) {
   return "bg-emerald-500"
 }
 
-export default function NautilusNode({ id, data }: NautilusNodeProps) {
-  const { setSelectedNodeId, setNodes } = useFlow()
+/**
+ * Menu actions are sent to the canvas as events rather than run here. A node
+ * that subscribed to canvas state would re-render on every change to it —
+ * which, during a drag, means every node on every mouse move.
+ */
+function act(id: string, action: "edit" | "duplicate" | "delete") {
+  window.dispatchEvent(new CustomEvent("nautilus-node-action", { detail: { id, action } }))
+}
 
-  const deleteNode = () => {
-    setNodes((prev) => prev.filter((n) => n.id !== id))
-    setSelectedNodeId(null)
-  }
-
-  const duplicateNode = () => {
-    setNodes((prev) => {
-      const node = prev.find((n) => n.id === id)
-      if (!node) return prev
-      return [
-        ...prev,
-        {
-          ...node,
-          id: crypto.randomUUID(),
-          position: {
-            x: node.position.x + 40,
-            y: node.position.y + 40,
-          },
-        },
-      ]
-    })
-  }
-
+function NautilusNode({ id, data }: NautilusNodeProps) {
   const toggleFailure = () => {
     window.dispatchEvent(
       new CustomEvent("nautilus-node-failure", { detail: { id } })
     )
   }
 
-  const editNode = () => {
-    setSelectedNodeId(id)
-    window.dispatchEvent(new CustomEvent("openSidebar"))
-  }
+  const schedule = data.sim?.schedule
 
   return (
     <ContextMenu>
@@ -134,6 +120,25 @@ export default function NautilusNode({ id, data }: NautilusNodeProps) {
             <div className="font-semibold text-sm truncate">
               {data.label || "Node"}
             </div>
+
+            {/* Self-starting work: this node does not wait to be called. */}
+            {schedule && schedule.everyMs > 0 && (
+              <div
+                className="ml-auto flex shrink-0 items-center gap-1 rounded bg-black/25 px-1.5 py-0.5 text-[10px] font-medium leading-none"
+                title={
+                  schedule.kind === "cron"
+                    ? "Cron job — fires on a schedule"
+                    : "Worker loop — runs continuously on every replica"
+                }
+              >
+                {schedule.kind === "cron" ? (
+                  <Clock className="h-3 w-3" />
+                ) : (
+                  <RefreshCw className="h-3 w-3" />
+                )}
+                {formatInterval(schedule.everyMs)}
+              </div>
+            )}
           </div>
 
           {/* BODY */}
@@ -176,11 +181,19 @@ export default function NautilusNode({ id, data }: NautilusNodeProps) {
                     <span className="text-primary"> → {data.__metrics.requiredReplicas}×</span>
                   )}
                 </span>
-                {data.__metrics.dropped > 0 && (
+                {data.__metrics.dropped > 0 ? (
                   <span className="text-red-500">
                     dropping {formatRate(data.__metrics.dropped)}
                   </span>
-                )}
+                ) : data.__metrics.backlogRate > 0 ? (
+                  <span className="text-amber-500">
+                    backlog +{formatRate(data.__metrics.backlogRate)}
+                  </span>
+                ) : data.__metrics.lagRate > 0 ? (
+                  <span className="text-amber-500">
+                    lagging {formatRate(data.__metrics.lagRate)}
+                  </span>
+                ) : null}
               </div>
             </div>
           )}
@@ -192,15 +205,17 @@ export default function NautilusNode({ id, data }: NautilusNodeProps) {
       </ContextMenuTrigger>
 
       <ContextMenuContent className="w-48">
-        <ContextMenuItem onClick={editNode}>Edit</ContextMenuItem>
-        <ContextMenuItem onClick={duplicateNode}>Duplicate</ContextMenuItem>
+        <ContextMenuItem onClick={() => act(id, "edit")}>Edit</ContextMenuItem>
+        <ContextMenuItem onClick={() => act(id, "duplicate")}>Duplicate</ContextMenuItem>
         <ContextMenuItem onClick={toggleFailure}>
           {data.__metrics?.down ? "Restore node" : "Simulate failure"}
         </ContextMenuItem>
-        <ContextMenuItem onClick={deleteNode} className="text-red-500">
+        <ContextMenuItem onClick={() => act(id, "delete")} className="text-red-500">
           Delete
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   )
 }
+
+export default memo(NautilusNode)

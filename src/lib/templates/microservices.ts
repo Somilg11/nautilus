@@ -12,7 +12,7 @@ export const MicroservicesTemplate = {
     {
       id: "client",
       type: "nautilusNode",
-      position: { x: 300, y: 0 },
+      position: { x: 570, y: 0 },
       data: {
         label: "Client App",
         icon: "client_web",
@@ -24,7 +24,7 @@ export const MicroservicesTemplate = {
     {
       id: "api-gateway",
       type: "nautilusNode",
-      position: { x: 300, y: 150 },
+      position: { x: 570, y: 300 },
       data: {
         label: "API Gateway (Kong)",
         icon: "load_balancer",
@@ -38,7 +38,7 @@ export const MicroservicesTemplate = {
     {
       id: "auth-service",
       type: "nautilusNode",
-      position: { x: 100, y: 300 },
+      position: { x: 190, y: 600 },
       data: {
         label: "Auth Service",
         icon: "auth",
@@ -50,7 +50,7 @@ export const MicroservicesTemplate = {
     {
       id: "user-service",
       type: "nautilusNode",
-      position: { x: 300, y: 300 },
+      position: { x: 570, y: 600 },
       data: {
         label: "User Service",
         icon: "microservice",
@@ -62,7 +62,7 @@ export const MicroservicesTemplate = {
     {
       id: "order-service",
       type: "nautilusNode",
-      position: { x: 500, y: 300 },
+      position: { x: 950, y: 600 },
       data: {
         label: "Order Service",
         icon: "microservice",
@@ -76,7 +76,7 @@ export const MicroservicesTemplate = {
     {
       id: "auth-db",
       type: "nautilusNode",
-      position: { x: 100, y: 450 },
+      position: { x: 190, y: 900 },
       data: {
         label: "Auth DB",
         icon: "redis",
@@ -88,7 +88,7 @@ export const MicroservicesTemplate = {
     {
       id: "user-db",
       type: "nautilusNode",
-      position: { x: 300, y: 450 },
+      position: { x: 570, y: 900 },
       data: {
         label: "User DB",
         icon: "postgres",
@@ -100,7 +100,7 @@ export const MicroservicesTemplate = {
     {
       id: "order-db",
       type: "nautilusNode",
-      position: { x: 500, y: 450 },
+      position: { x: 950, y: 900 },
       data: {
         label: "Order DB",
         icon: "mongodb",
@@ -114,7 +114,7 @@ export const MicroservicesTemplate = {
     {
       id: "kafka",
       type: "nautilusNode",
-      position: { x: 300, y: 600 },
+      position: { x: 570, y: 1200 },
       data: {
         label: "Event Bus (Kafka)",
         icon: "kafka",
@@ -128,7 +128,7 @@ export const MicroservicesTemplate = {
     {
       id: "notification-service",
       type: "nautilusNode",
-      position: { x: 100, y: 750 },
+      position: { x: 190, y: 1500 },
       data: {
         label: "Notification Service",
         icon: "microservice",
@@ -140,7 +140,7 @@ export const MicroservicesTemplate = {
     {
       id: "analytics-service",
       type: "nautilusNode",
-      position: { x: 500, y: 750 },
+      position: { x: 950, y: 1500 },
       data: {
         label: "Analytics Service",
         icon: "microservice",
@@ -149,27 +149,50 @@ export const MicroservicesTemplate = {
         sim: { capacity: 2500, replicas: 8, latencyMs: 35, errorRate: 0.002, costPerHour: 0.1 },
       },
     },
+
+    // Self-starting work: nobody calls these, they run on a clock
+    {
+      id: "recon-job",
+      type: "nautilusNode",
+      position: { x: 1406, y: 600 },
+      data: {
+        label: "Reconciliation Job",
+        icon: "cron",
+        color: "purple",
+        description: "Cron: every 5 minutes it re-checks pending orders against the payment ledger",
+        sim: {
+          capacity: 500,
+          latencyMs: 80,
+          costPerHour: 0.02,
+          schedule: { kind: "cron", everyMs: 300000, batch: 200 },
+        },
+      },
+    },
   ],
   edges: [
     // Client -> Gateway
-    { id: "e1", source: "client", target: "api-gateway", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e1", source: "client", target: "api-gateway", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "GET", path: "/api/*" } } },
 
     // Gateway -> Services
-    { id: "e2", source: "api-gateway", target: "auth-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { sim: { share: 1 } } },
-    { id: "e3", source: "api-gateway", target: "user-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { sim: { share: 0.6 } }, label: "60%" },
-    { id: "e4", source: "api-gateway", target: "order-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { sim: { share: 0.3 } }, label: "30%" },
+    { id: "e2", source: "api-gateway", target: "auth-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "POST", path: "/auth/verify" }, sim: { share: 1 } } },
+    { id: "e3", source: "api-gateway", target: "user-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "GET", path: "/users/:id" }, sim: { share: 0.6 } }, label: "60%" },
+    { id: "e4", source: "api-gateway", target: "order-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "POST", path: "/orders" }, sim: { share: 0.3 } }, label: "30%" },
 
     // Services -> DBs
-    { id: "e5", source: "auth-service", target: "auth-db", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
-    { id: "e6", source: "user-service", target: "user-db", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
-    { id: "e7", source: "order-service", target: "order-db", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
+    { id: "e5", source: "auth-service", target: "auth-db", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "READ", path: "sessions" } } },
+    { id: "e6", source: "user-service", target: "user-db", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "QUERY", path: "users" } } },
+    { id: "e7", source: "order-service", target: "order-db", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "WRITE", path: "orders" } } },
 
     // Services -> Kafka (Producers)
-    { id: "e8", source: "user-service", target: "kafka", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, data: { sim: { share: 0.2 } }, label: "signups" },
-    { id: "e9", source: "order-service", target: "kafka", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, data: { sim: { share: 0.8 } }, label: "orders" },
+    { id: "e8", source: "user-service", target: "kafka", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, data: { flow: { op: "PUBLISH", path: "user.signed_up" }, sim: { share: 0.2 } }, label: "signups" },
+    { id: "e9", source: "order-service", target: "kafka", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, data: { flow: { op: "PUBLISH", path: "order.created" }, sim: { share: 0.8 } }, label: "orders" },
 
     // Kafka -> Services (Consumers)
-    { id: "e10", source: "kafka", target: "notification-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, data: { sim: { share: 1 } } },
-    { id: "e11", source: "kafka", target: "analytics-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, data: { sim: { share: 1 } } },
+    { id: "e10", source: "kafka", target: "notification-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, data: { flow: { op: "CONSUME", path: "order.created" }, sim: { share: 1 } } },
+    { id: "e11", source: "kafka", target: "analytics-service", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, data: { flow: { op: "CONSUME", path: "*.events" }, sim: { share: 1 } } },
+
+    // Scheduled and polled — these fire whether or not users show up
+    { id: "e12", source: "recon-job", target: "order-db", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "QUERY", path: "orders (pending)", timeoutMs: 2000 } } },
+    { id: "e13", source: "analytics-service", target: "user-db", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "POLL", path: "users (changed)", intervalMs: 30000 } } },
   ],
 }

@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   AlertTriangle,
+  Cpu,
   Gauge,
+  ListOrdered,
   Pause,
   Play,
   Copy,
@@ -12,6 +14,7 @@ import {
   PinOff,
   PowerOff,
   RotateCcw,
+  SkipBack,
   SkipForward,
   Square,
   TrendingUp,
@@ -31,6 +34,8 @@ import {
 
 import RampChart from "@/components/ramp-chart"
 import type { Simulation, SimulationSpeed } from "@/lib/use-simulation"
+import type { EngineStats } from "@/lib/use-load-engine"
+import { OP_META, type FlowHop } from "@/lib/flow-ops"
 import {
   formatMs,
   formatRate,
@@ -55,10 +60,14 @@ export type LoadController = {
   report: SimulationReport | null
   /** Sweep of the same design across a range of offered loads. */
   ramp: RampResult | null
+  /** Where and how fast the last run executed. */
+  stats: EngineStats | null
   /** Pinned run to compare the current one against. */
   baseline: SimulationReport | null
   disable: () => void
   focusNode: (id: string) => void
+  /** Select a connection and bring it into view. */
+  focusEdge: (id: string) => void
   /** Set one node's replica count to the suggested value. */
   applyReplicas: (id: string, replicas: number) => void
   /** Apply every suggestion at once. */
@@ -73,17 +82,23 @@ export type LoadController = {
 
 /**
  * Bottom-of-canvas control surface for both simulators:
- * "Trace" walks the graph step by step, "Load" pushes traffic through it.
+ * "Trace" replays the numbered requests one at a time, "Load" pushes traffic
+ * through them, and "Calls" lists every hop with who triggers it.
  */
+type PanelTab = "trace" | "load" | "ramp" | "calls"
+
 export default function SimulationPanel({
   sim,
   load,
+  hops,
 }: {
   sim: Simulation
   load: LoadController
+  /** Every request in the diagram, in numbered order. */
+  hops: FlowHop[]
 }) {
   const traceActive = sim.status !== "idle"
-  const [tab, setTab] = useState<"trace" | "load" | "ramp">("trace")
+  const [tab, setTab] = useState<PanelTab>("trace")
 
   if (!traceActive && !load.enabled) return null
 
@@ -97,7 +112,7 @@ export default function SimulationPanel({
 
   return (
     <div className="absolute bottom-4 left-1/2 z-10 w-[min(94vw,680px)] -translate-x-1/2 rounded-xl border bg-background/95 shadow-lg backdrop-blur">
-      <Tabs value={activeTab} onValueChange={(v) => setTab(v as "trace" | "load" | "ramp")}>
+      <Tabs value={activeTab} onValueChange={(v) => setTab(v as PanelTab)}>
         <div className="flex items-center gap-2 border-b px-3 py-2">
           <TabsList className="h-7">
             <TabsTrigger value="trace" className="h-6 gap-1.5 px-2 text-[12px]" disabled={!traceActive}>
@@ -108,6 +123,9 @@ export default function SimulationPanel({
             </TabsTrigger>
             <TabsTrigger value="ramp" className="h-6 gap-1.5 px-2 text-[12px]" disabled={!load.enabled}>
               <LineChart className="h-3 w-3" /> Ramp
+            </TabsTrigger>
+            <TabsTrigger value="calls" className="h-6 gap-1.5 px-2 text-[12px]">
+              <ListOrdered className="h-3 w-3" /> Calls
             </TabsTrigger>
           </TabsList>
 
@@ -154,6 +172,16 @@ export default function SimulationPanel({
         <TabsContent value="ramp" className="m-0 p-3">
           <RampPanel load={load} />
         </TabsContent>
+
+        {/* ---------------- CALLS ---------------- */}
+        <TabsContent value="calls" className="m-0 p-3">
+          <HopList
+            hops={hops}
+            report={load.report}
+            onPick={(hop) => load.focusEdge(hop.edgeId)}
+            className="max-h-[44vh]"
+          />
+        </TabsContent>
       </Tabs>
     </div>
   )
@@ -162,13 +190,13 @@ export default function SimulationPanel({
 /* ------------------------------------------------------------------ */
 
 function TraceControls({ sim }: { sim: Simulation }) {
-  const current = sim.plan?.steps[sim.stepIndex]
+  const hop = sim.current
   const label =
     sim.status === "finished"
-      ? "Run complete"
-      : current?.cyclic
-        ? "Cycle — running remaining nodes together"
-        : `Step ${sim.stepIndex + 1} of ${sim.stepCount} · ${current?.nodes.length ?? 0} node(s) active`
+      ? `Run complete · ${sim.stepCount} request${sim.stepCount === 1 ? "" : "s"}`
+      : hop
+        ? `${hop.step} of ${sim.stepCount} · ${hop.sourceLabel} → ${hop.targetLabel}`
+        : "Starting…"
 
   return (
     <div className="space-y-2">
@@ -188,6 +216,17 @@ function TraceControls({ sim }: { sim: Simulation }) {
             <Play className="h-4 w-4" />
           </Button>
         )}
+
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          onClick={sim.stepBack}
+          disabled={sim.stepIndex <= 0}
+          aria-label="Step back"
+        >
+          <SkipBack className="h-4 w-4" />
+        </Button>
 
         <Button
           size="icon"
@@ -214,6 +253,15 @@ function TraceControls({ sim }: { sim: Simulation }) {
               }}
             />
           </div>
+          {hop && sim.status !== "finished" && (
+            <div className="mt-1 flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
+              <OpPill hop={hop} />
+              {hop.path && <code className="truncate">{hop.path}</code>}
+              <span className="truncate">
+                · {MODE_TEXT[hop.mode]} · {hop.trigger}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-1">
@@ -232,6 +280,13 @@ function TraceControls({ sim }: { sim: Simulation }) {
         </div>
       </div>
 
+      <HopList
+        hops={sim.hops}
+        currentIndex={sim.stepIndex}
+        onPick={(h) => sim.jumpTo(h.step - 1)}
+        className="max-h-[28vh] border-t pt-2"
+      />
+
       {sim.warnings.length > 0 && (
         <div className="space-y-1 border-t pt-2">
           {sim.warnings.map((w) => (
@@ -242,6 +297,106 @@ function TraceControls({ sim }: { sim: Simulation }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
+const MODE_TEXT: Record<FlowHop["mode"], string> = {
+  sync: "caller waits",
+  async: "hand-off, nobody waits",
+  pull: "consumer pulls",
+  poll: "on a timer",
+}
+
+function OpPill({ hop }: { hop: FlowHop }) {
+  return (
+    <span
+      className="shrink-0 rounded px-1 py-px font-mono text-[10px] font-semibold leading-4 text-white"
+      style={{ backgroundColor: OP_META[hop.op].color }}
+    >
+      {hop.op}
+    </span>
+  )
+}
+
+/**
+ * Every request in numbered order: who calls whom, with what, and what sets
+ * it off. Rows off-screen are skipped by the browser (`content-visibility`),
+ * so a diagram with thousands of connections still scrolls smoothly.
+ */
+function HopList({
+  hops,
+  currentIndex,
+  report,
+  onPick,
+  className = "",
+}: {
+  hops: FlowHop[]
+  currentIndex?: number
+  report?: SimulationReport | null
+  onPick: (hop: FlowHop) => void
+  className?: string
+}) {
+  const currentRef = useRef<HTMLButtonElement | null>(null)
+
+  // Keep the request in flight visible while a trace plays.
+  useEffect(() => {
+    currentRef.current?.scrollIntoView({ block: "nearest" })
+  }, [currentIndex])
+
+  if (hops.length === 0) {
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        No requests yet — connect two components to see the flow.
+      </p>
+    )
+  }
+
+  return (
+    <div className={`overflow-y-auto overscroll-contain ${className}`}>
+      {hops.map((hop, i) => {
+        const live = report?.edges[hop.edgeId]
+        const isCurrent = i === currentIndex
+        const isDone = currentIndex !== undefined && i < currentIndex
+
+        return (
+          <button
+            key={hop.edgeId}
+            ref={isCurrent ? currentRef : undefined}
+            onClick={() => onPick(hop)}
+            style={{ contentVisibility: "auto", containIntrinsicSize: "auto 24px" }}
+            className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-[11px] transition-colors hover:bg-accent ${
+              isCurrent ? "bg-primary/10 font-medium" : isDone ? "text-muted-foreground" : ""
+            }`}
+          >
+            <span className="w-6 shrink-0 text-right font-mono tabular-nums text-muted-foreground">
+              {hop.step}
+            </span>
+            <OpPill hop={hop} />
+            <span className="min-w-0 flex-1 truncate">
+              {hop.sourceLabel} → {hop.targetLabel}
+              {hop.path && <code className="ml-1.5 text-muted-foreground">{hop.path}</code>}
+            </span>
+            <span className="hidden shrink-0 text-muted-foreground sm:inline">{hop.trigger}</span>
+            {live && (
+              <span
+                className={`shrink-0 font-mono tabular-nums ${
+                  live.timedOut ? "text-destructive" : "text-muted-foreground"
+                }`}
+                title={
+                  live.timedOut
+                    ? `p95 ${formatMs(live.responseP95Ms)} is over the ${formatMs(live.timeoutMs ?? 0)} timeout`
+                    : `p95 ${formatMs(live.responseP95Ms)}`
+                }
+              >
+                {formatRate(live.rate)} · {formatMs(live.responseMs)}
+              </span>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -380,6 +535,23 @@ function LoadControls({ load }: { load: LoadController }) {
             >
               <Copy className="mr-1 h-3 w-3" /> Copy report
             </Button>
+
+            {load.stats && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <Cpu className="h-3 w-3" />
+                    {load.stats.mode === "worker" ? "Web Worker" : "In-page"} ·{" "}
+                    {load.stats.ms < 10 ? load.stats.ms.toFixed(1) : Math.round(load.stats.ms)} ms
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Simulated in this browser{load.stats.mode === "worker" ? ", off the main thread" : ""} —{" "}
+                  {load.stats.nodeCount} nodes, {load.stats.edgeCount} connections, run plus a
+                  24-point ramp. Nothing is sent to a server.
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -431,6 +603,33 @@ function LoadControls({ load }: { load: LoadController }) {
               Background pipeline p95 {formatMs(summary.pipelineP95Ms)} —{" "}
               {summary.pipelinePath.map((id) => report!.metrics[id]?.label ?? id).join(" → ")}
               . Nobody waits on it, so it is not checked against the timeout.
+            </div>
+          )}
+
+          {summary.scheduledLoad > 0 && (
+            <div className="text-[11px] text-muted-foreground">
+              {formatRate(summary.scheduledLoad)} of the load is self-generated — cron jobs,
+              worker loops and polls run whether or not users show up.
+            </div>
+          )}
+
+          {summary.slowCalls.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] text-muted-foreground">Over their timeout</span>
+              {summary.slowCalls.slice(0, 6).map((id) => {
+                const call = report!.edges[id]
+                return (
+                  <button
+                    key={id}
+                    onClick={() => load.focusEdge(id)}
+                    title={`p95 ${formatMs(call.responseP95Ms)} against a ${formatMs(call.timeoutMs ?? 0)} timeout`}
+                    className="rounded border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-[11px] text-destructive transition-colors hover:bg-destructive/20"
+                  >
+                    {report!.metrics[call.source]?.label ?? call.source} →{" "}
+                    {report!.metrics[call.target]?.label ?? call.target}
+                  </button>
+                )
+              })}
             </div>
           )}
 
@@ -544,8 +743,9 @@ function LoadControls({ load }: { load: LoadController }) {
               {summary.backlogNodes
                 .map((id) => `${report!.metrics[id].label} +${formatRate(report!.metrics[id].backlogRate)}`)
                 .join(", ")}
-              . Queues absorb the overload instead of shedding it, but the lag
-              grows for as long as the load lasts.
+              . Queues absorb the overload instead of shedding it — including
+              what a slow consumer leaves behind — but the lag grows for as
+              long as the load lasts.
             </Note>
           )}
 

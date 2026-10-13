@@ -12,7 +12,7 @@ export const ThreeTierTemplate = {
     {
       id: "client",
       type: "nautilusNode",
-      position: { x: 250, y: 0 },
+      position: { x: 475, y: 0 },
       data: {
         label: "Client (Browser/Mobile)",
         icon: "client_web",
@@ -24,7 +24,7 @@ export const ThreeTierTemplate = {
     {
       id: "dns",
       type: "nautilusNode",
-      position: { x: 250, y: 100 },
+      position: { x: 475, y: 200 },
       data: {
         label: "DNS (Route53)",
         icon: "dns",
@@ -36,7 +36,7 @@ export const ThreeTierTemplate = {
     {
       id: "cdn",
       type: "nautilusNode",
-      position: { x: 450, y: 100 },
+      position: { x: 855, y: 200 },
       data: {
         label: "CDN (Cloudflare)",
         icon: "cdn",
@@ -50,7 +50,7 @@ export const ThreeTierTemplate = {
     {
       id: "lb",
       type: "nautilusNode",
-      position: { x: 250, y: 200 },
+      position: { x: 475, y: 400 },
       data: {
         label: "Load Balancer (Nginx)",
         icon: "load_balancer",
@@ -62,7 +62,7 @@ export const ThreeTierTemplate = {
     {
       id: "web-server-1",
       type: "nautilusNode",
-      position: { x: 100, y: 350 },
+      position: { x: 190, y: 700 },
       data: {
         label: "Web Server 1",
         icon: "web_server",
@@ -74,7 +74,7 @@ export const ThreeTierTemplate = {
     {
       id: "web-server-2",
       type: "nautilusNode",
-      position: { x: 400, y: 350 },
+      position: { x: 760, y: 700 },
       data: {
         label: "Web Server 2",
         icon: "web_server",
@@ -88,7 +88,7 @@ export const ThreeTierTemplate = {
     {
       id: "cache",
       type: "nautilusNode",
-      position: { x: 600, y: 350 },
+      position: { x: 1140, y: 700 },
       data: {
         label: "Cache (Redis)",
         icon: "redis",
@@ -102,7 +102,7 @@ export const ThreeTierTemplate = {
     {
       id: "db-primary",
       type: "nautilusNode",
-      position: { x: 150, y: 500 },
+      position: { x: 285, y: 1000 },
       data: {
         label: "Primary DB (Postgres)",
         icon: "postgres",
@@ -114,7 +114,7 @@ export const ThreeTierTemplate = {
     {
       id: "db-replica",
       type: "nautilusNode",
-      position: { x: 350, y: 500 },
+      position: { x: 665, y: 1000 },
       data: {
         label: "Read Replica",
         icon: "postgres",
@@ -128,23 +128,23 @@ export const ThreeTierTemplate = {
     // Client -> DNS
     { id: "e1", source: "client", target: "dns", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
     // Client -> CDN (Static assets)
-    { id: "e2", source: "client", target: "cdn", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, label: "Static Assets" },
+    { id: "e2", source: "client", target: "cdn", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, label: "Static Assets", data: { flow: { op: "GET" } } },
     // DNS -> LB
     { id: "e3", source: "dns", target: "lb", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow } },
 
     // LB -> Web Servers
-    { id: "e4", source: "lb", target: "web-server-1", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { sim: { share: 0.5 } }, label: "50%" },
-    { id: "e5", source: "lb", target: "web-server-2", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { sim: { share: 0.5 } }, label: "50%" },
+    { id: "e4", source: "lb", target: "web-server-1", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "GET" }, sim: { share: 0.5 } }, label: "50%" },
+    { id: "e5", source: "lb", target: "web-server-2", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { flow: { op: "GET" }, sim: { share: 0.5 } }, label: "50%" },
 
     // Web Servers -> Cache
-    { id: "e6", source: "web-server-1", target: "cache", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true },
-    { id: "e7", source: "web-server-2", target: "cache", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true },
+    { id: "e6", source: "web-server-1", target: "cache", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, data: { flow: { op: "READ" } } },
+    { id: "e7", source: "web-server-2", target: "cache", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, data: { flow: { op: "READ" } } },
 
     // Web Servers -> DB
     { id: "e8", source: "web-server-1", target: "db-primary", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { sim: { share: 0.15 } }, label: "cache miss" },
     { id: "e9", source: "web-server-2", target: "db-primary", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, data: { sim: { share: 0.15 } }, label: "cache miss" },
 
     // DB Replication
-    { id: "e10", source: "db-primary", target: "db-replica", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, label: "Replication", data: { sim: { share: 0.2 } } },
+    { id: "e10", source: "db-primary", target: "db-replica", type: "deletableEdge", markerEnd: { type: MarkerType.Arrow }, animated: true, label: "Replication", data: { flow: { op: "EVENT" }, sim: { share: 0.2 } } },
   ],
 }

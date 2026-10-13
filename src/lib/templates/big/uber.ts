@@ -12,7 +12,7 @@ export const UberTemplate = {
     {
       id: "rider-app",
       type: "nautilusNode",
-      position: { x: 100, y: 0 },
+      position: { x: 190, y: 0 },
       data: {
         label: "Rider App",
         icon: "client_mobile",
@@ -24,7 +24,7 @@ export const UberTemplate = {
     {
       id: "driver-app",
       type: "nautilusNode",
-      position: { x: 500, y: 0 },
+      position: { x: 950, y: 0 },
       data: {
         label: "Driver App",
         icon: "client_mobile",
@@ -38,7 +38,7 @@ export const UberTemplate = {
     {
       id: "lb",
       type: "nautilusNode",
-      position: { x: 300, y: 100 },
+      position: { x: 570, y: 200 },
       data: {
         label: "Load Balancer",
         icon: "load_balancer",
@@ -50,7 +50,7 @@ export const UberTemplate = {
     {
       id: "api-gateway",
       type: "nautilusNode",
-      position: { x: 300, y: 200 },
+      position: { x: 570, y: 400 },
       data: {
         label: "API Gateway",
         icon: "api_server",
@@ -64,7 +64,7 @@ export const UberTemplate = {
     {
       id: "trip-service",
       type: "nautilusNode",
-      position: { x: 100, y: 350 },
+      position: { x: 190, y: 700 },
       data: {
         label: "Trip Service",
         icon: "microservice",
@@ -76,7 +76,7 @@ export const UberTemplate = {
     {
       id: "matching-service",
       type: "nautilusNode",
-      position: { x: 300, y: 350 },
+      position: { x: 570, y: 700 },
       data: {
         label: "Matching Service",
         icon: "microservice",
@@ -88,7 +88,7 @@ export const UberTemplate = {
     {
       id: "location-service",
       type: "nautilusNode",
-      position: { x: 500, y: 350 },
+      position: { x: 950, y: 700 },
       data: {
         label: "Location Service",
         icon: "microservice",
@@ -102,7 +102,7 @@ export const UberTemplate = {
     {
       id: "trip-db",
       type: "nautilusNode",
-      position: { x: 100, y: 500 },
+      position: { x: 190, y: 1000 },
       data: {
         label: "Trip DB (Postgres)",
         icon: "postgres",
@@ -114,7 +114,7 @@ export const UberTemplate = {
     {
       id: "geo-index",
       type: "nautilusNode",
-      position: { x: 500, y: 500 },
+      position: { x: 950, y: 1000 },
       data: {
         label: "Geo Index (Redis)",
         icon: "redis",
@@ -126,7 +126,7 @@ export const UberTemplate = {
     {
       id: "location-db",
       type: "nautilusNode",
-      position: { x: 700, y: 500 },
+      position: { x: 1330, y: 1000 },
       data: {
         label: "Location History (Cassandra)",
         icon: "cassandra",
@@ -140,7 +140,7 @@ export const UberTemplate = {
     {
       id: "kafka",
       type: "nautilusNode",
-      position: { x: 300, y: 650 },
+      position: { x: 570, y: 1300 },
       data: {
         label: "Event Stream (Kafka)",
         icon: "kafka",
@@ -152,7 +152,7 @@ export const UberTemplate = {
     {
       id: "payment-service",
       type: "nautilusNode",
-      position: { x: 100, y: 800 },
+      position: { x: 190, y: 1600 },
       data: {
         label: "Payment Service",
         icon: "billing",
@@ -164,7 +164,7 @@ export const UberTemplate = {
     {
       id: "analytics",
       type: "nautilusNode",
-      position: { x: 500, y: 800 },
+      position: { x: 950, y: 1600 },
       data: {
         label: "Analytics (Hadoop)",
         icon: "elastic",

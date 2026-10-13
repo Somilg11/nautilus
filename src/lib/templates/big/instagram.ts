@@ -12,7 +12,7 @@ export const InstagramTemplate = {
     {
       id: "mobile-app",
       type: "nautilusNode",
-      position: { x: 300, y: 0 },
+      position: { x: 570, y: 0 },
       data: {
         label: "Mobile App",
         icon: "client_mobile",
@@ -26,7 +26,7 @@ export const InstagramTemplate = {
     {
       id: "cdn",
       type: "nautilusNode",
-      position: { x: 500, y: 100 },
+      position: { x: 950, y: 200 },
       data: {
         label: "CDN (Cloudfront)",
         icon: "cdn",
@@ -38,7 +38,7 @@ export const InstagramTemplate = {
     {
       id: "lb",
       type: "nautilusNode",
-      position: { x: 300, y: 150 },
+      position: { x: 570, y: 300 },
       data: {
         label: "Load Balancer",
         icon: "load_balancer",
@@ -52,7 +52,7 @@ export const InstagramTemplate = {
     {
       id: "app-server-1",
       type: "nautilusNode",
-      position: { x: 150, y: 300 },
+      position: { x: 285, y: 600 },
       data: {
         label: "App Server (Django)",
         icon: "web_server",
@@ -64,7 +64,7 @@ export const InstagramTemplate = {
     {
       id: "app-server-2",
       type: "nautilusNode",
-      position: { x: 450, y: 300 },
+      position: { x: 855, y: 600 },
       data: {
         label: "App Server (Django)",
         icon: "web_server",
@@ -78,7 +78,7 @@ export const InstagramTemplate = {
     {
       id: "feed-service",
       type: "nautilusNode",
-      position: { x: 650, y: 300 },
+      position: { x: 1235, y: 600 },
       data: {
         label: "Feed Service",
         icon: "microservice",
@@ -92,7 +92,7 @@ export const InstagramTemplate = {
     {
       id: "user-db",
       type: "nautilusNode",
-      position: { x: 150, y: 450 },
+      position: { x: 285, y: 900 },
       data: {
         label: "User DB (Postgres)",
         icon: "postgres",
@@ -104,7 +104,7 @@ export const InstagramTemplate = {
     {
       id: "media-storage",
       type: "nautilusNode",
-      position: { x: 500, y: 550 },
+      position: { x: 950, y: 1100 },
       data: {
         label: "Object Storage (S3)",
         icon: "s3",
@@ -116,7 +116,7 @@ export const InstagramTemplate = {
     {
       id: "feed-cache",
       type: "nautilusNode",
-      position: { x: 650, y: 450 },
+      position: { x: 1235, y: 900 },
       data: {
         label: "Feed Cache (Redis)",
         icon: "redis",
@@ -130,7 +130,7 @@ export const InstagramTemplate = {
     {
       id: "task-queue",
       type: "nautilusNode",
-      position: { x: 300, y: 650 },
+      position: { x: 570, y: 1300 },
       data: {
         label: "Task Queue (RabbitMQ)",
         icon: "rabbitmq",
@@ -142,7 +142,7 @@ export const InstagramTemplate = {
     {
       id: "image-processor",
       type: "nautilusNode",
-      position: { x: 300, y: 750 },
+      position: { x: 570, y: 1500 },
       data: {
         label: "Image Processor (Celery)",
         icon: "microservice",

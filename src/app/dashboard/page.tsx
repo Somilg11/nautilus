@@ -7,14 +7,16 @@ import Canvas from "@/components/canvas"
 import RightSidebar from "@/components/right-sidebar"
 import EditingTools from "@/components/editing-tools"
 import MobileDisclaimer from "@/components/mobile-disclaimer"
-import { FlowProvider, useFlow } from "@/lib/flow-context"
+import { FlowProvider, useFlowActions } from "@/lib/flow-context"
 import { DEFAULT_LOAD_PARAMS } from "@/lib/simulation-model"
 
 function DashboardInner() {
   const [rightOpen, setRightOpen] = useState(false)
   const [leftOpen, setLeftOpen] = useState(true)
 
-  const { setNodes, setEdges, setLoadParams } = useFlow()
+  // Write-only: this shell holds the sidebars and toolbar, and must not be
+  // re-rendered every time a node moves.
+  const { setNodes, setEdges, setLoadParams } = useFlowActions()
 
   return (
     <div className="flex flex-col h-screen">

@@ -1,12 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  computeExecutionPlan,
-  type ExecutionPlan,
-  type SimEdge,
-  type SimNode,
-} from "./flow-execution"
+import { computeExecutionPlan } from "./flow-execution"
+import type { FlowHop, FlowSequence } from "./flow-ops"
+import type { SimGraph } from "./sim-graph"
 
 export type SimulationStatus = "idle" | "running" | "paused" | "finished"
 
@@ -19,10 +16,13 @@ const BASE_STEP_MS = 900
 
 export type Simulation = {
   status: SimulationStatus
-  plan: ExecutionPlan | null
-  /** Index of the step currently highlighted (-1 before the first step). */
+  /** The numbered hops being replayed, frozen when the run started. */
+  hops: FlowHop[]
+  /** Index of the hop currently highlighted (-1 before the first one). */
   stepIndex: number
   stepCount: number
+  /** The request in flight right now. */
+  current: FlowHop | null
   speed: SimulationSpeed
   nodeMarks: Map<string, SimMark>
   edgeMarks: Map<string, SimMark>
@@ -34,23 +34,27 @@ export type Simulation = {
   resume: () => void
   stop: () => void
   stepForward: () => void
+  stepBack: () => void
+  /** Jump straight to a hop and hold there. */
+  jumpTo: (index: number) => void
   setSpeed: (s: SimulationSpeed) => void
 }
 
 /**
- * Drives a step-by-step run over the current diagram.
+ * Replays the diagram one request at a time, in the numbered order shown on
+ * the connections.
  *
  * The run state lives entirely inside this hook — it never writes back into
  * the canvas nodes. That keeps the simulation out of undo history, out of
  * autosave, and out of exported JSON, and makes stopping a run instant.
  */
 export function useSimulation(
-  nodes: SimNode[],
-  edges: SimEdge[],
+  graph: SimGraph,
+  sequence: FlowSequence,
   options?: { onError?: (message: string) => void; onWarn?: (message: string) => void }
 ): Simulation {
   const [status, setStatus] = useState<SimulationStatus>("idle")
-  const [plan, setPlan] = useState<ExecutionPlan | null>(null)
+  const [hops, setHops] = useState<FlowHop[]>([])
   const [stepIndex, setStepIndex] = useState(-1)
   const [speed, setSpeed] = useState<SimulationSpeed>(1)
   const [warnings, setWarnings] = useState<string[]>([])
@@ -76,53 +80,45 @@ export function useSimulation(
     clearTimer()
     setStatus("idle")
     setStepIndex(-1)
-    setPlan(null)
+    setHops([])
     setWarnings([])
   }, [clearTimer])
 
   const start = useCallback(() => {
     clearTimer()
 
-    const executable = nodes.filter((n) => n.type !== "groupNode")
+    const executable = graph.nodes.filter((n) => n.type !== "groupNode")
     if (executable.length === 0) {
       optionsRef.current?.onError?.("Nothing to run — the canvas is empty.")
       return
     }
-
-    const nextPlan = computeExecutionPlan(nodes, edges)
-    if (nextPlan.steps.length === 0) {
-      optionsRef.current?.onError?.("No runnable path found.")
+    if (sequence.hops.length === 0) {
+      optionsRef.current?.onError?.("Nothing to run — connect two components first.")
       return
     }
 
+    const plan = computeExecutionPlan(graph.nodes, graph.edges)
     const nextWarnings: string[] = []
-    if (nextPlan.entryPoints.length === 0) {
+    if (sequence.entryPoints.length === 0 && sequence.selfStarting.length === 0) {
       nextWarnings.push(
-        "Every node has an incoming edge — the graph is one big cycle, so there is no entry point."
+        "Nothing starts this flow — every node has an incoming connection and none runs on a schedule."
       )
     }
-    if (nextPlan.cyclicNodes.length > 0) {
+    if (plan.cyclicNodes.length > 0) {
       nextWarnings.push(
-        `${nextPlan.cyclicNodes.length} node(s) form a cycle and run in a single final step.`
+        `${plan.cyclicNodes.length} node(s) form a cycle; each is visited once, then the loop is cut.`
       )
     }
-    if (nextPlan.danglingEdges.length > 0) {
-      nextWarnings.push(
-        `${nextPlan.danglingEdges.length} connection(s) point at a missing node and were skipped.`
-      )
-    }
-    if (nextPlan.isolatedNodes.length > 0) {
-      nextWarnings.push(
-        `${nextPlan.isolatedNodes.length} node(s) have no connections.`
-      )
+    if (plan.isolatedNodes.length > 0) {
+      nextWarnings.push(`${plan.isolatedNodes.length} node(s) have no connections.`)
     }
     nextWarnings.forEach((w) => optionsRef.current?.onWarn?.(w))
 
-    setPlan(nextPlan)
+    setHops(sequence.hops)
     setWarnings(nextWarnings)
     setStepIndex(0)
     setStatus("running")
-  }, [nodes, edges, clearTimer])
+  }, [graph, sequence, clearTimer])
 
   const pause = useCallback(() => {
     clearTimer()
@@ -135,24 +131,41 @@ export function useSimulation(
 
   const stepForward = useCallback(() => {
     clearTimer()
-    if (!plan) return
+    if (hops.length === 0) return
 
     const next = stepIndex + 1
-    if (next >= plan.steps.length) {
-      setStepIndex(plan.steps.length - 1)
+    if (next >= hops.length) {
+      setStepIndex(hops.length - 1)
       setStatus("finished")
       return
     }
     setStepIndex(next)
     setStatus("paused")
-  }, [plan, stepIndex, clearTimer])
+  }, [hops, stepIndex, clearTimer])
+
+  const stepBack = useCallback(() => {
+    clearTimer()
+    if (hops.length === 0) return
+    setStepIndex(Math.max(0, stepIndex - 1))
+    setStatus("paused")
+  }, [hops, stepIndex, clearTimer])
+
+  const jumpTo = useCallback(
+    (index: number) => {
+      clearTimer()
+      if (hops.length === 0) return
+      setStepIndex(Math.min(hops.length - 1, Math.max(0, index)))
+      setStatus("paused")
+    },
+    [hops, clearTimer]
+  )
 
   // Advance the run while it is playing.
   useEffect(() => {
-    if (status !== "running" || !plan) return
+    if (status !== "running" || hops.length === 0) return
 
-    // The final step still gets a full beat on screen before the run ends.
-    const isLastStep = stepIndex + 1 >= plan.steps.length
+    // The final hop still gets a full beat on screen before the run ends.
+    const isLastStep = stepIndex + 1 >= hops.length
 
     timerRef.current = window.setTimeout(() => {
       if (isLastStep) setStatus("finished")
@@ -160,28 +173,33 @@ export function useSimulation(
     }, BASE_STEP_MS / speed)
 
     return clearTimer
-  }, [status, stepIndex, plan, speed, clearTimer])
+  }, [status, stepIndex, hops, speed, clearTimer])
 
-  // Marks handed to the canvas for rendering. Steps already executed stay
-  // "done" so the traversal reads as a trail rather than a single blink.
+  // Marks handed to the canvas for rendering. Hops already made stay "done"
+  // so the traversal reads as a trail rather than a single blink.
   const { nodeMarks, edgeMarks } = useMemo(() => {
     const nodeMarks = new Map<string, SimMark>()
     const edgeMarks = new Map<string, SimMark>()
-    if (!plan || stepIndex < 0) return { nodeMarks, edgeMarks }
+    if (stepIndex < 0) return { nodeMarks, edgeMarks }
 
-    for (let i = 0; i <= stepIndex && i < plan.steps.length; i++) {
-      const mark: SimMark = i === stepIndex ? "active" : "done"
-      plan.steps[i].nodes.forEach((id) => nodeMarks.set(id, mark))
-      plan.steps[i].edges.forEach((id) => edgeMarks.set(id, mark))
+    const last = Math.min(stepIndex, hops.length - 1)
+    for (let i = 0; i <= last; i++) {
+      const hop = hops[i]
+      const mark: SimMark = i === last ? "active" : "done"
+      edgeMarks.set(hop.edgeId, mark)
+      // A node passed through earlier lights up again when it is called again.
+      nodeMarks.set(hop.source, mark)
+      nodeMarks.set(hop.target, mark)
     }
     return { nodeMarks, edgeMarks }
-  }, [plan, stepIndex])
+  }, [hops, stepIndex])
 
   return {
     status,
-    plan,
+    hops,
     stepIndex,
-    stepCount: plan?.steps.length ?? 0,
+    stepCount: hops.length,
+    current: stepIndex >= 0 ? (hops[stepIndex] ?? null) : null,
     speed,
     nodeMarks,
     edgeMarks,
@@ -191,6 +209,8 @@ export function useSimulation(
     resume,
     stop,
     stepForward,
+    stepBack,
+    jumpTo,
     setSpeed,
   }
 }

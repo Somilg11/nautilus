@@ -104,3 +104,50 @@
   border-color: rgba(239, 68, 68, 0.9) !important;
   opacity: 0.65;
 }
+
+/* ---------------------------------------------
+   REQUEST BADGES
+
+   The numbered pill on every connection. Fixed
+   monospace metrics so the SVG can size the pill
+   without measuring text.
+--------------------------------------------- */
+.flow-badge-text {
+  fill: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* Zoomed far out the badge text is a couple of pixels tall: unreadable, and
+   still the most expensive thing on the canvas to paint. */
+.canvas-far .flow-badge {
+  display: none;
+}
+
+/* ---------------------------------------------
+   LITE MODE
+
+   Applied on large diagrams and low-end devices.
+   Filters and infinite animations force a repaint
+   of everything they touch on every frame; the
+   state they signal is still shown by colour.
+--------------------------------------------- */
+.canvas-lite .sim-node-active {
+  animation: none;
+  box-shadow: 0 0 0 2px rgba(0, 255, 153, 0.9) !important;
+}
+
+.canvas-lite .sim-edge-active {
+  filter: none;
+}
+
+.canvas-lite .sim-node-saturated,
+.canvas-lite .sim-node-overloaded {
+  box-shadow: none !important;
+}
+
+.canvas-lite .react-flow__node > div {
+  box-shadow: none;
+}

@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import React, { useEffect, useMemo, useRef } from "react"
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import ReactFlow, {
   Background,
   BackgroundVariant,
   Controls,
   MiniMap,
   Panel,
-  MarkerType,
   ReactFlowInstance,
   NodeChange,
   EdgeChange,
@@ -22,16 +21,16 @@ import { useFlow } from "@/lib/flow-context"
 import NautilusNode from "@/components/nodes/NautilusNode"
 import SimulationPanel, { type LoadController } from "@/components/simulation-panel"
 import { useSimulation } from "@/lib/use-simulation"
-import {
-  capacityReport,
-  simulateLoad,
-  sweepLoad,
-  type SimulationReport,
-} from "@/lib/simulation-model"
+import { useLoadEngine } from "@/lib/use-load-engine"
+import { createGraphProjector } from "@/lib/sim-graph"
+import { createEdgeDecorator, createNodeDecorator } from "@/lib/canvas-decorate"
+import { computeSequence } from "@/lib/flow-ops"
+import { capacityReport, type SimulationReport } from "@/lib/simulation-model"
 import "reactflow/dist/style.css"
 import "@/styles/canvas.css"
 
 import DeletableEdge from "@/components/edges/deletable-edge"
+import FlowMarkers from "@/components/edges/flow-markers"
 
 import GroupNode from "@/components/nodes/GroupNode"
 
@@ -56,9 +55,39 @@ function miniMapColor(color?: string) {
       return "#71717a"
   }
 }
+const miniMapNodeColor = (n: { data?: { color?: string } }) => miniMapColor(n.data?.color)
+
 const edgeTypes = { deletableEdge: DeletableEdge }
 
 let CLIPBOARD: { nodes: any[]; edges: any[] } | null = null
+
+/**
+ * Past this many nodes and connections the canvas drops its decorative
+ * effects — marching-ants edges, glow filters — which cost far more to paint
+ * than the diagram itself.
+ */
+const LITE_ELEMENT_COUNT = 220
+/** The minimap redraws every node on every change, so it goes first. */
+const MINIMAP_NODE_LIMIT = 400
+const MINIMAP_NODE_LIMIT_LOW_END = 120
+
+/** Schedules given to self-starting components when they are dropped in. */
+const DEFAULT_SCHEDULES: Record<string, { kind: "cron" | "worker"; everyMs: number; batch: number }> = {
+  cron: { kind: "cron", everyMs: 60_000, batch: 1 },
+  worker: { kind: "worker", everyMs: 1000, batch: 1 },
+}
+
+const subscribeNever = () => () => {}
+
+/** Few cores, little memory, or an explicit request for less motion. */
+function isLowEndDevice() {
+  const nav = navigator as Navigator & { deviceMemory?: number }
+  return (
+    (nav.hardwareConcurrency ?? 8) <= 4 ||
+    (nav.deviceMemory ?? 8) <= 4 ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  )
+}
 
 /* --------------------------------
         MAIN CANVAS
@@ -72,6 +101,9 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     edges,
     setNodes,
     setEdges,
+    commitHistory,
+    undo,
+    redo,
     reactFlowInstance,
     setReactFlowInstance,
     setSelectedNodeId,
@@ -80,35 +112,49 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     setLoadParams,
   } = useFlow()
 
-  const sim = useSimulation(nodes, edges, {
+  /* -----------------------------
+        SIMULATION INPUT
+
+     Positions, selection and measured sizes change constantly and mean
+     nothing to a simulation. The projector returns the same graph until
+     something structural changes, so nothing below re-runs during a drag.
+  ------------------------------ */
+  const [projectGraph] = useState(createGraphProjector)
+  const simGraph = useMemo(() => projectGraph(nodes, edges), [projectGraph, nodes, edges])
+
+  /** Which request goes where, in order. Drives the numbers on the edges. */
+  const sequence = useMemo(
+    () => computeSequence(simGraph.nodes, simGraph.edges),
+    [simGraph]
+  )
+
+  const sim = useSimulation(simGraph, sequence, {
     onError: (m) => toast.error(m),
     onWarn: (m) => toast.warning(m),
   })
 
+  const lowEnd = useSyncExternalStore(subscribeNever, isLowEndDevice, () => false)
+  const lite = lowEnd || nodes.length + edges.length > LITE_ELEMENT_COUNT
+  const showMiniMap =
+    nodes.length <= (lowEnd ? MINIMAP_NODE_LIMIT_LOW_END : MINIMAP_NODE_LIMIT)
+
   /* -----------------------------
         LOAD PLAYGROUND
 
-     Steady-state model, recomputed on every parameter or graph change so the
-     numbers track edits live. Results are render-only, like trace marks.
+     Steady-state model, re-run on every parameter or graph change so the
+     numbers track edits live. It runs in a Web Worker in this browser — the
+     graph is compiled there once per edit, and a run plus its 24-point ramp
+     never blocks the canvas or leaves the machine. Results are render-only,
+     like trace marks.
   ------------------------------ */
   const [loadOn, setLoadOn] = React.useState(false)
   /** Pinned run to compare against while tuning. */
   const [baseline, setBaseline] = React.useState<SimulationReport | null>(null)
 
-  const loadReport = useMemo(
-    () => (loadOn ? simulateLoad(nodes as any, edges as any, loadParams) : null),
-    [loadOn, nodes, edges, loadParams]
-  )
-
-  // Sweeping runs the model ~24 times, so keep it off the typing path.
-  const ramp = useMemo(
-    () =>
-      loadOn
-        ? sweepLoad(nodes as any, edges as any, loadParams, {
-            maxRps: Math.max(1000, loadParams.requestsPerSecond * 2),
-          })
-        : null,
-    [loadOn, nodes, edges, loadParams]
+  const { report: loadReport, ramp, stats: engineStats } = useLoadEngine(
+    loadOn,
+    simGraph,
+    loadParams
   )
 
   /** Merge a patch into one node's `data.sim`, dropping emptied fields. */
@@ -131,6 +177,7 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     setParams: setLoadParams,
     report: loadReport,
     ramp,
+    stats: engineStats,
     baseline,
     disable: () => setLoadOn(false),
 
@@ -190,9 +237,31 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
       toast.success("All nodes restored")
     },
 
+    focusEdge: (id: string) => {
+      const edge = edges.find((e) => e.id === id)
+      if (!edge) return
+      setSelectedNodeId(null)
+      setNodes((prev) => prev.map((n) => (n.selected ? { ...n, selected: false } : n)), { history: false })
+      setEdges((prev) => prev.map((e) => (Boolean(e.selected) === (e.id === id) ? e : { ...e, selected: e.id === id })), {
+        history: false,
+      })
+      const a = nodes.find((n) => n.id === edge.source)
+      const b = nodes.find((n) => n.id === edge.target)
+      if (a && b) {
+        reactFlowInstance?.setCenter(
+          (a.position.x + b.position.x) / 2 + 80,
+          (a.position.y + b.position.y) / 2 + 40,
+          { zoom: 1.1, duration: 400 }
+        )
+      }
+    },
+
     focusNode: (id: string) => {
       setSelectedNodeId(id)
-      setNodes((prev) => prev.map((n) => ({ ...n, selected: n.id === id })))
+      setNodes(
+        (prev) => prev.map((n) => (Boolean(n.selected) === (n.id === id) ? n : { ...n, selected: n.id === id })),
+        { history: false }
+      )
       const node = nodes.find((n) => n.id === id)
       if (node) reactFlowInstance?.setCenter(node.position.x + 80, node.position.y + 40, { zoom: 1.2, duration: 400 })
     },
@@ -234,6 +303,11 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
 
     newNode.type = "nautilusNode"
 
+    // Cron jobs and workers arrive already running, so the flow shows them
+    // starting work on their own instead of waiting for a caller.
+    const schedule = DEFAULT_SCHEDULES[compId]
+    if (schedule) newNode.data.sim = { schedule }
+
     setNodes((prev) => [...prev, newNode])
   }
 
@@ -251,51 +325,107 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     onOpenSidebar()
   }
 
+  // The inspector shows a connection's request details when no node is picked.
+  const onEdgeClick = () => setSelectedNodeId(null)
+
+  const onEdgeDoubleClick = (_e: any, edge: any) => {
+    setSelectedNodeId(null)
+    setEdges((prev) => prev.map((e) => (e.selected === (e.id === edge.id) ? e : { ...e, selected: e.id === edge.id })), {
+      history: false,
+    })
+    onOpenSidebar()
+  }
+
   /* -----------------------------
        APPLY NODE CHANGES
   ------------------------------ */
+  /** True once a drag has actually moved something, so a click is not an edit. */
+  const movedRef = useRef(false)
+
   const onNodesChange = (changes: NodeChange[]) => {
-    setNodes((prev) => {
-      const updated = [...prev]
-      for (const c of changes) {
-        if (!("id" in c)) continue
-        const index = updated.findIndex((n) => n.id === (c as any).id)
-        if (index === -1) continue
+    let dragEnded = false
 
-        if (c.type === "position" && c.position) {
-          updated[index] = { ...updated[index], position: c.position }
+    // None of these are undo steps on their own: selection and measured sizes
+    // are not edits, and a drag is one edit, recorded when it ends.
+    setNodes(
+      (prev) => {
+        let updated: typeof prev | null = null
+        let index: Map<string, number> | null = null
+
+        for (const c of changes) {
+          if (c.type !== "position" && c.type !== "select" && c.type !== "dimensions") continue
+
+          // One id lookup table per batch: the first render of a large diagram
+          // reports every node's size at once.
+          index ??= new Map(prev.map((n, i) => [n.id, i]))
+          const i = index.get(c.id)
+          if (i === undefined) continue
+
+          const current = (updated ?? prev)[i]
+          let next = current
+
+          if (c.type === "position") {
+            if (c.position) {
+              next = { ...current, position: c.position }
+              movedRef.current = true
+            }
+            if (c.dragging === false) dragEnded = true
+          } else if (c.type === "select") {
+            if (Boolean(current.selected) !== c.selected) next = { ...current, selected: c.selected }
+          } else if (c.dimensions) {
+            // Measured size matters for alignment and grouping.
+            if (current.width !== c.dimensions.width || current.height !== c.dimensions.height) {
+              next = {
+                ...current,
+                width: c.dimensions.width,
+                height: c.dimensions.height,
+                measured: { ...c.dimensions },
+              } as any
+            }
+          }
+
+          if (next !== current) {
+            updated ??= [...prev]
+            updated[i] = next
+          }
         }
 
-        if (c.type === "select" && typeof c.selected === "boolean") {
-          updated[index] = { ...updated[index], selected: c.selected }
-        }
+        return updated ?? prev
+      },
+      { history: false }
+    )
 
-        // Update dimensions if measured (important for alignment/grouping)
-        if (c.type === 'dimensions' && c.dimensions) {
-          updated[index] = { ...updated[index], width: c.dimensions.width, height: c.dimensions.height, measured: { ...c.dimensions } } as any
-        }
-      }
-      return updated
-    })
+    if (dragEnded && movedRef.current) {
+      movedRef.current = false
+      commitHistory()
+    }
   }
 
   /* -----------------------------
        APPLY EDGE CHANGES
   ------------------------------ */
   const onEdgesChange = (changes: EdgeChange[]) => {
-    setEdges((prev) => {
-      let updated = [...prev]
-      for (const c of changes) {
-        if (c.type === "remove") updated = updated.filter((e) => e.id !== c.id)
-        if (c.type === "select" && typeof c.selected === "boolean") {
-          const index = updated.findIndex((e) => e.id === c.id)
-          if (index !== -1) {
-            updated[index] = { ...updated[index], selected: c.selected }
+    const removes = changes.some((c) => c.type === "remove")
+
+    setEdges(
+      (prev) => {
+        let updated: typeof prev | null = null
+        for (const c of changes) {
+          if (c.type === "remove") {
+            updated = (updated ?? prev).filter((e) => e.id !== c.id)
+          } else if (c.type === "select") {
+            const list = updated ?? prev
+            const index = list.findIndex((e) => e.id === c.id)
+            if (index !== -1 && Boolean(list[index].selected) !== c.selected) {
+              updated ??= [...prev]
+              updated[index] = { ...updated[index], selected: c.selected }
+            }
           }
         }
-      }
-      return updated
-    })
+        return updated ?? prev
+      },
+      { history: removes }
+    )
   }
 
   /* -----------------------------
@@ -309,7 +439,6 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
       sourceHandle: params.sourceHandle ?? undefined,
       targetHandle: params.targetHandle ?? undefined,
       type: "deletableEdge",
-      markerEnd: { type: MarkerType.Arrow },
     }
 
     setEdges((prev) => [...prev, edge])
@@ -586,6 +715,17 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     function onKey(e: KeyboardEvent) {
       const cmd = e.ctrlKey || e.metaKey
 
+      if (cmd && (e.key.toLowerCase() === "z" || e.key.toLowerCase() === "y")) {
+        // A text field has its own undo; leave it to the browser there.
+        const target = e.target as HTMLElement | null
+        if (target?.closest("input, textarea, select, [contenteditable='true']")) return
+
+        e.preventDefault()
+        if (e.key.toLowerCase() === "y" || e.shiftKey) redo()
+        else undo()
+        return
+      }
+
       if (cmd && e.key.toLowerCase() === "c") {
         e.preventDefault()
         copySelected()
@@ -673,6 +813,46 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
     }
     window.addEventListener("nautilus-delete-edge", deleteEdge)
     return () => window.removeEventListener("nautilus-delete-edge", deleteEdge)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  /* -----------------------------
+      NODE CONTEXT MENU ACTIONS
+
+      Nodes dispatch these instead of touching canvas state themselves, so
+      they do not have to subscribe to it.
+  ------------------------------ */
+  useEffect(() => {
+    function onNodeAction(e: Event) {
+      const { id, action } = (e as CustomEvent).detail ?? {}
+      if (!id) return
+
+      if (action === "delete") {
+        setNodes((prev) => prev.filter((n) => n.id !== id))
+        setEdges((prev) => prev.filter((edge) => edge.source !== id && edge.target !== id))
+        setSelectedNodeId(null)
+      } else if (action === "duplicate") {
+        setNodes((prev) => {
+          const node = prev.find((n) => n.id === id)
+          if (!node) return prev
+          return [
+            ...prev,
+            {
+              ...node,
+              id: crypto.randomUUID(),
+              selected: false,
+              position: { x: node.position.x + 40, y: node.position.y + 40 },
+            },
+          ]
+        })
+      } else if (action === "edit") {
+        setSelectedNodeId(id)
+        onOpenSidebar()
+      }
+    }
+    window.addEventListener("nautilus-node-action", onNodeAction)
+    return () => window.removeEventListener("nautilus-node-action", onNodeAction)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /* -----------------------------
@@ -744,44 +924,19 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
       Marks are merged into node/edge data only for rendering, so a run never
       touches canvas state (no undo entries, no autosave, no export noise).
   ------------------------------ */
-  const renderedNodes = useMemo(() => {
-    if (sim.nodeMarks.size === 0 && !loadReport) return nodes
+  const [decorateNodes] = useState(createNodeDecorator)
+  const [decorateEdges] = useState(createEdgeDecorator)
 
-    return nodes.map((n) => {
-      const mark = sim.nodeMarks.get(n.id)
-      const metrics = loadReport?.metrics[n.id]
-      if (!mark && !metrics) return n
+  const renderedNodes = useMemo(
+    () => decorateNodes(nodes, sim.nodeMarks, loadReport),
+    [decorateNodes, nodes, sim.nodeMarks, loadReport]
+  )
 
-      return {
-        ...n,
-        data: {
-          ...n.data,
-          ...(mark ? { __simStatus: mark } : {}),
-          ...(metrics ? { __metrics: metrics } : {}),
-        },
-      }
-    })
-  }, [nodes, sim.nodeMarks, loadReport])
-
+  // Every connection carries its step number and request type; trace marks
+  // and live rates are layered on top while a simulation is open.
   const renderedEdges = useMemo(
-    () =>
-      edges.map((e) => {
-        const mark = sim.edgeMarks.get(e.id)
-        return {
-          ...e,
-          type: "deletableEdge", // Force type for existing edges
-          animated: mark === "active",
-          data: { ...(e.data ?? {}), __simStatus: mark },
-          style: e.selected
-            ? { stroke: "#ff4d4d", strokeWidth: 2 }
-            : mark === "active"
-              ? { stroke: "#00ff99", strokeWidth: 2.5 }
-              : mark === "done"
-                ? { stroke: "#00b46e", strokeWidth: 1.5 }
-                : { stroke: "#999" },
-        }
-      }),
-    [edges, sim.edgeMarks]
+    () => decorateEdges(edges, sim.edgeMarks, sequence, loadReport, lite),
+    [decorateEdges, edges, sim.edgeMarks, sequence, loadReport, lite]
   )
 
   /* -----------------------------
@@ -790,7 +945,7 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
   return (
     <div
       ref={wrapperRef}
-      className="flex-1 h-full bg-canvas-pattern"
+      className={`flex-1 h-full bg-canvas-pattern ${lite ? "canvas-lite" : ""}`}
       style={{ position: "relative" }}
     >
       <ReactFlow
@@ -803,11 +958,19 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
         onDragOver={onDragOver}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
+        onEdgeClick={onEdgeClick}
+        onEdgeDoubleClick={onEdgeDoubleClick}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        // Off-screen nodes and edges are not mounted at all, which is what
+        // keeps a several-hundred-node diagram responsive to pan and zoom.
+        onlyRenderVisibleElements
+        minZoom={0.05}
         fitView
       >
+        <FlowMarkers />
+
         <Background variant={BackgroundVariant.Dots} gap={18} size={1} className="opacity-60" />
 
         <Controls
@@ -815,15 +978,17 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
           className="!bottom-4 !left-4 !shadow-sm [&>button]:!border-border [&>button]:!bg-background [&>button]:!text-foreground"
         />
 
-        <MiniMap
-          pannable
-          zoomable
-          ariaLabel="Diagram overview"
-          className="!bottom-4 !right-4 !h-28 !w-44 !rounded-lg !border !bg-background/80 !shadow-sm"
-          maskColor="rgba(0,0,0,0.06)"
-          nodeColor={(n) => miniMapColor(n.data?.color)}
-          nodeStrokeWidth={2}
-        />
+        {showMiniMap && (
+          <MiniMap
+            pannable
+            zoomable
+            ariaLabel="Diagram overview"
+            className="!bottom-4 !right-4 !h-28 !w-44 !rounded-lg !border !bg-background/80 !shadow-sm"
+            maskColor="rgba(0,0,0,0.06)"
+            nodeColor={miniMapNodeColor}
+            nodeStrokeWidth={2}
+          />
+        )}
 
         {nodes.length === 0 && (
           <Panel position="top-center" className="!top-16">
@@ -837,7 +1002,7 @@ export default function Canvas({ onOpenSidebar }: { onOpenSidebar: () => void })
         )}
       </ReactFlow>
 
-      <SimulationPanel sim={sim} load={load} />
+      <SimulationPanel sim={sim} load={load} hops={sequence.hops} />
     </div>
   )
 }

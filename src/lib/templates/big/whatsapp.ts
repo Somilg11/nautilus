@@ -12,7 +12,7 @@ export const WhatsAppTemplate = {
         {
             id: "user-a",
             type: "nautilusNode",
-            position: { x: 100, y: 0 },
+            position: { x: 190, y: 0 },
             data: {
                 label: "User A",
                 icon: "client_mobile",
@@ -24,7 +24,7 @@ export const WhatsAppTemplate = {
         {
             id: "user-b",
             type: "nautilusNode",
-            position: { x: 500, y: 0 },
+            position: { x: 950, y: 0 },
             data: {
                 label: "User B",
                 icon: "client_mobile",
@@ -38,7 +38,7 @@ export const WhatsAppTemplate = {
         {
             id: "lb",
             type: "nautilusNode",
-            position: { x: 300, y: 100 },
+            position: { x: 570, y: 200 },
             data: {
                 label: "Load Balancer",
                 icon: "load_balancer",
@@ -52,7 +52,7 @@ export const WhatsAppTemplate = {
         {
             id: "chat-gateway",
             type: "nautilusNode",
-            position: { x: 300, y: 250 },
+            position: { x: 570, y: 500 },
             data: {
                 label: "Chat Gateway (Ejabberd)",
                 icon: "api_server",
@@ -66,7 +66,7 @@ export const WhatsAppTemplate = {
         {
             id: "auth-service",
             type: "nautilusNode",
-            position: { x: 100, y: 400 },
+            position: { x: 190, y: 800 },
             data: {
                 label: "Auth Service",
                 icon: "auth",
@@ -78,7 +78,7 @@ export const WhatsAppTemplate = {
         {
             id: "group-service",
             type: "nautilusNode",
-            position: { x: 500, y: 400 },
+            position: { x: 950, y: 800 },
             data: {
                 label: "Group Service",
                 icon: "microservice",
@@ -92,7 +92,7 @@ export const WhatsAppTemplate = {
         {
             id: "mnesia",
             type: "nautilusNode",
-            position: { x: 300, y: 400 },
+            position: { x: 570, y: 800 },
             data: {
                 label: "Mnesia (Session DB)",
                 icon: "redis",
@@ -104,7 +104,7 @@ export const WhatsAppTemplate = {
         {
             id: "cassandra",
             type: "nautilusNode",
-            position: { x: 300, y: 550 },
+            position: { x: 570, y: 1100 },
             data: {
                 label: "Cassandra (Message Store)",
                 icon: "cassandra",
@@ -118,7 +118,7 @@ export const WhatsAppTemplate = {
         {
             id: "media-server",
             type: "nautilusNode",
-            position: { x: 700, y: 250 },
+            position: { x: 1330, y: 500 },
             data: {
                 label: "Media Server (HTTP)",
                 icon: "web_server",
@@ -130,7 +130,7 @@ export const WhatsAppTemplate = {
         {
             id: "blob-storage",
             type: "nautilusNode",
-            position: { x: 700, y: 400 },
+            position: { x: 1330, y: 800 },
             data: {
                 label: "Blob Storage",
                 icon: "s3",

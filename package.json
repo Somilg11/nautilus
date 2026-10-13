@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/csp-hashes.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -63,6 +63,7 @@
   "files": [
     "bin",
     "desktop",
+    "scripts",
     "src",
     "public",
     "next.config.ts",
