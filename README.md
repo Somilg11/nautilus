@@ -293,7 +293,7 @@ docs/                         Markdown guides
   validation — has no React and no DOM, so it runs unchanged in a worker and in
   Node under test.
 - **CI on every push and pull request:** lint, type check, tests, production
-  build and `npm audit --audit-level=high`.
+  build, and `npm audit` — high severity for what ships, critical for tooling.
 
 ```bash
 npm run lint && npm run typecheck && npm test && npm run build

@@ -497,7 +497,7 @@ but a nonce must be fresh per request, which forces every page to be rendered on
 a server for every visitor — the opposite of this app's one constraint. Because
 every page is prerendered, its inline scripts are fully known when the build
 ends. So `npm run build` is `next build && node scripts/csp-hashes.mjs`: the
-script hashes every inline script in the prerendered HTML (25 hashes across 22
+script hashes every inline script in the prerendered HTML (about 25 hashes across 22
 pages) and rewrites the `script-src` directive in `.next/routes-manifest.json`,
 replacing `'unsafe-inline'` with those hashes. `next.config.ts` keeps
 `'unsafe-inline'` as the starting value, so a build that skips the step still

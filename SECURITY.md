@@ -64,7 +64,8 @@ Out of scope:
 - API keys are sent only to the provider the user selected, over HTTPS, and are
   never logged or transmitted anywhere else.
 - Simulations run in a same-origin Web Worker and make no network requests.
-- `npm audit` is enforced in CI.
+- `npm audit` is enforced in CI: production dependencies must be clean at high
+  severity, and development tooling at critical.
 
 ## Known limitations
 

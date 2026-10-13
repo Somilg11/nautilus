@@ -364,7 +364,7 @@ The threat is unusual: there is no server to attack, but **API keys sit in
   scripts. The standard fix is a nonce, but a nonce is per request, which means
   rendering every page on a server — giving up the static deploy. Since every
   page is prerendered, its inline scripts are known at the end of the build. A
-  post-build step hashes them (25 hashes over 22 pages) and swaps
+  post-build step hashes them (about 25 hashes over 22 pages) and swaps
   `'unsafe-inline'` for those hashes in the header the host serves. Verified in
   Chrome: an injected `<script>` and an injected `onerror` handler both fail to
   run. The trade-off is that the step edits framework build output, so it needs
@@ -473,8 +473,8 @@ closer than a node's footprint.
 - **Browser verification** with a headless Chrome script: numbering, trace,
   worker execution, connection editing, undo/redo behaviour, persistence,
   network requests during a run, console and CSP errors.
-- **CI:** lint, type check, tests, production build, `npm audit` at high
-  severity — on every push and pull request.
+- **CI:** lint, type check, tests, production build, and `npm audit` (high severity for production
+  dependencies, critical for tooling) — on every push and pull request.
 
 What is not covered: React components have no unit tests, and there is no
 committed end-to-end suite — the browser script was a verification tool, not

@@ -188,7 +188,7 @@ that:
 6. **Keep `worker-src 'self' blob:` if you rewrite the policy.** Without it the
    load playground falls back to running on the page's main thread; it still
    works, but large diagrams will stutter while it runs.
-7. **Keep dependencies patched.** `npm audit` should report zero
+7. **Keep dependencies patched.** `npm audit --omit=dev` should report zero
    vulnerabilities; CI runs it on every push.
 
 If you deploy Nautilus for a team, consider disabling the AI panel entirely
