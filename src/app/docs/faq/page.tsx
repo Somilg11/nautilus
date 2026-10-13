@@ -36,7 +36,19 @@ export default function FaqPage() {
             },
             {
               q: "Does the simulation model latency or load?",
-              a: "No. It animates dependency order, which is a structural check rather than a performance model.",
+              a: "Yes. Trace replays the numbered requests in order; the load playground pushes traffic through a capacity model and reports utilisation, queue-inflated latency, p95, drops, backlog, cost and where the design gives out. It is a steady-state model, so use it to find bottlenecks rather than to predict an exact p99.",
+            },
+            {
+              q: "Are the endpoints I name actually called?",
+              a: "No. An endpoint or topic on a connection describes the design. Nothing is ever sent to it — Nautilus is a model, not a load-testing tool.",
+            },
+            {
+              q: "Does running a simulation put load on a server?",
+              a: "No. There is no simulation backend. The model runs in a Web Worker inside your own browser and makes no network requests, so it works offline and costs the host nothing.",
+            },
+            {
+              q: "Will it cope with a large diagram?",
+              a: "Off-screen components are not drawn, badges are hidden when you zoom out too far to read them, and animations switch off automatically on big diagrams and low-end devices. Imports are capped at 2,000 components and 4,000 connections.",
             },
             {
               q: "Does Nautilus send my data anywhere?",

@@ -27,7 +27,7 @@ export const DOCS_NAV: DocsGroup[] = [
       {
         href: "/docs/quick-start",
         label: "Quick start",
-        summary: "From an empty canvas to a running simulation in five steps.",
+        summary: "From an empty canvas to a load-tested design in six steps.",
       },
       {
         href: "/docs/interface",
@@ -42,7 +42,7 @@ export const DOCS_NAV: DocsGroup[] = [
       {
         href: "/docs/building",
         label: "Building a diagram",
-        summary: "Nodes, edges, descriptions and the colour convention.",
+        summary: "Components, connections and what each connection does.",
       },
       {
         href: "/docs/tools",
@@ -62,7 +62,7 @@ export const DOCS_NAV: DocsGroup[] = [
       {
         href: "/docs/simulation",
         label: "Flow simulation",
-        summary: "Watch data traverse the architecture, step by step.",
+        summary: "Numbered requests, cron and polling, and a load test that runs in your browser.",
       },
       {
         href: "/docs/templates",
@@ -77,7 +77,7 @@ export const DOCS_NAV: DocsGroup[] = [
       {
         href: "/docs/sharing",
         label: "Sharing & export",
-        summary: "Autosave, JSON, share links and PNG export.",
+        summary: "Autosave, JSON, share links, PNG export and the file format.",
       },
     ],
   },

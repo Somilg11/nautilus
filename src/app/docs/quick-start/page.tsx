@@ -4,12 +4,12 @@ import { Callout, DocsPager, PageHeader, Section, Steps } from "@/components/doc
 export const metadata = {
   title: "Quick start — Nautilus Docs",
   description:
-    "Go from an empty Nautilus canvas to a running architecture simulation in five steps: drag components in, connect them, describe them, run it.",
+    "Go from an empty Nautilus canvas to a load-tested architecture in six steps: drag components in, connect them, say what each request does, run it, load it.",
   alternates: { canonical: "/docs/quick-start" },
   openGraph: {
     title: "Quick start — Nautilus Docs",
     description:
-      "Go from an empty Nautilus canvas to a running architecture simulation in five steps: drag components in, connect them, describe them, run it.",
+      "Go from an empty Nautilus canvas to a load-tested architecture in six steps: drag components in, connect them, say what each request does, run it, load it.",
     url: "/docs/quick-start",
     type: "article",
   },
@@ -21,7 +21,7 @@ export default function QuickStartPage() {
       <PageHeader
         eyebrow="Getting started"
         title="Quick start"
-        lead="Five steps from an empty canvas to a running simulation. No install, no sign-up."
+        lead="Six steps from an empty canvas to a design you have pushed traffic through. No install, no sign-up."
       />
 
       <Section>
@@ -45,15 +45,19 @@ export default function QuickStartPage() {
             },
             {
               title: "Connect them",
-              body: "Drag from the handle at the bottom of one node to the handle at the top of another. Direction matters: it is what the simulation follows.",
+              body: "Drag from the handle at the bottom of one node to the handle at the top of another. Draw from whoever starts the interaction to whoever receives it — caller to service, producer to queue, queue to consumer.",
             },
             {
-              title: "Describe them",
-              body: "Select a node and fill in its label and description in the right panel. A described diagram is a document; an undescribed one is a picture.",
+              title: "Say what each request does",
+              body: "Every connection already carries a step number and an inferred operation. Double-click one to make it specific: GET /orders/:id, PUBLISH order.created, POLL every 5 seconds.",
             },
             {
               title: "Run it",
-              body: "Press Run in the toolbar and watch data traverse the design step by step. Parallel branches light up together.",
+              body: "Press Run in the toolbar to replay the requests one at a time, in the order they happen. The Calls tab lists every hop and what triggers it.",
+            },
+            {
+              title: "Push traffic through it",
+              body: "Press the gauge button, give your services a capacity in Properties ▸ Simulation, and drag the load slider until something turns red. The Ramp tab shows where the design gives out.",
             },
           ]}
         />

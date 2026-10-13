@@ -62,6 +62,19 @@ export default function SharingPage() {
           "errorRate": 0.001
         }
       }
+    },
+    {
+      "id": "sweeper",
+      "type": "nautilusNode",
+      "position": { "x": 420, "y": 40 },
+      "data": {
+        "label": "Settlement Job",
+        "icon": "cron",
+        "sim": {
+          "capacity": 500,
+          "schedule": { "kind": "cron", "everyMs": 300000, "batch": 200 }
+        }
+      }
     }
   ],
   "edges": [
@@ -70,8 +83,10 @@ export default function SharingPage() {
       "source": "api",
       "target": "db",
       "type": "deletableEdge",
-      "label": "cache miss",
-      "data": { "sim": { "share": 0.15, "fanout": 1 } }
+      "data": {
+        "flow": { "op": "QUERY", "path": "charges", "timeoutMs": 250 },
+        "sim": { "share": 0.15, "fanout": 1 }
+      }
     }
   ],
   "sim": {
@@ -112,9 +127,12 @@ export default function SharingPage() {
               ["sim.costPerHour", "node — price of one replica per hour", "0"],
               ["sim.hitRate", "node — share answered here, not forwarded, 0–1", "0"],
               ["sim.queue", "node — buffers past capacity instead of dropping", "auto by icon"],
+              ["sim.schedule.kind", "node — cron (once per interval) or worker (every replica loops)", "absent"],
+              ["sim.schedule.everyMs", "node — interval between firings, 1 ms to one week", "required with kind"],
+              ["sim.schedule.batch", "node — jobs started per firing", "1"],
               ["sim.share", "edge — fraction of requests taking this edge, 0–1", "1"],
               ["sim.fanout", "edge — calls made per request", "1"],
-              ["sim.async", "edge — fire-and-forget; latency past it leaves the request path", "auto into queues"],
+              ["sim.async", "edge — legacy hand-off flag; flow.op EVENT says the same thing", "auto into queues"],
             ]}
           />
           <P>
@@ -137,11 +155,30 @@ export default function SharingPage() {
               ["id", "Unique within the file."],
               ["source / target", "Node ids. Edges pointing at a missing node are dropped on import."],
               ["type", <Code key="e">deletableEdge</Code>],
-              ["label", "Optional text rendered on the connection."],
+              ["label", "Optional text; shown on the badge when no endpoint is set."],
               ["animated", "Optional boolean, purely visual."],
+              ["data.flow", "What the connection does — see below."],
               ["data.sim", "Routing model — share and fanout."],
             ]}
           />
+        </Section>
+
+        <Section title="Request fields">
+          <Table
+            head={["Field", "Meaning", "Default"]}
+            rows={[
+              ["flow.op", "GET, POST, PUT, PATCH, DELETE, CALL, READ, WRITE, QUERY, PUBLISH, EVENT, CONSUME or POLL", "inferred"],
+              ["flow.path", "Endpoint, topic, table or key. Descriptive only — never called", "empty"],
+              ["flow.order", "Position among the source's outgoing calls; lower runs first", "as drawn"],
+              ["flow.intervalMs", "POLL only: time between polls, per replica of the source", "5000"],
+              ["flow.timeoutMs", "How long the caller waits; flagged when the p95 is slower", "none"],
+            ]}
+          />
+          <P>
+            Imports are limited to 2,000 nodes and 4,000 connections, text
+            fields to 2,000 characters, and every number has a ceiling — so a
+            hand-written or generated file cannot ask for infinite load.
+          </P>
         </Section>
       </Section>
 

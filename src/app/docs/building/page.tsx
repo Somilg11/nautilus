@@ -3,7 +3,7 @@ import { Callout, DocsPager, List, P, PageHeader, Section, Table } from "@/compo
 export const metadata = {
   title: "Building a diagram — Nautilus Docs",
   description:
-    "How to build an architecture diagram in Nautilus: adding nodes, drawing edges, writing component descriptions and using the colour convention.",
+    "How to build an architecture diagram in Nautilus: adding components, drawing connections, saying what each request does, and the colour convention.",
   alternates: { canonical: "/docs/building" },
   openGraph: {
     title: "Building a diagram — Nautilus Docs",
@@ -20,7 +20,7 @@ export default function BuildingPage() {
       <PageHeader
         eyebrow="Editing"
         title="Building a diagram"
-        lead="A node is a component. An edge is a directed dependency. Everything else follows from those two ideas."
+        lead="A node is a component. A connection is a request from one component to another. Everything else follows from those two ideas."
       />
 
       <Section title="The basics">
@@ -28,10 +28,45 @@ export default function BuildingPage() {
           items={[
             "Drag a component from the left palette onto the canvas to create a node.",
             "Drag from the bottom handle of one node to the top handle of another to connect them.",
-            "Double-click a node to open its properties in the right panel.",
-            "Click an edge, then the ✕ button on it, to remove a connection.",
+            "Double-click a node or a connection to open its properties in the right panel.",
+            "Right-click a node to edit, duplicate or delete it, or to simulate its failure.",
+            "Select a connection, then the ✕ button on it, to remove it.",
           ]}
         />
+      </Section>
+
+      <Section title="Which way to draw a connection">
+        <P>
+          From the component that <strong>starts</strong> the interaction to the
+          one that receives it. The direction is what the step numbers, the
+          trace and the load model all follow.
+        </P>
+        <Table
+          head={["Situation", "Draw it", "Operation"]}
+          rows={[
+            ["A service calls another", "Caller → callee", "GET, POST, CALL …"],
+            ["A service reads or writes a store", "Service → store", "READ, WRITE, QUERY"],
+            ["A service produces a message", "Producer → queue", "PUBLISH"],
+            ["A consumer reads from a queue", "Queue → consumer", "CONSUME"],
+            ["Something checks on a timer", "Poller → what it polls", "POLL"],
+            ["A webhook or fire-and-forget call", "Sender → receiver", "EVENT"],
+          ]}
+        />
+        <P>
+          You do not have to label every line. A connection with no operation
+          gets one inferred from what it joins, and you can make any of them
+          specific — endpoint, timeout, call order — in Properties.
+        </P>
+      </Section>
+
+      <Section title="Components that run on their own">
+        <P>
+          The palette has a <strong>Worker</strong> and a <strong>Cron Job</strong>{" "}
+          under Compute, already set to run on a schedule. Any other component
+          can be given one in <strong>Properties ▸ Runs on its own</strong>.
+          Nothing has to call them: they start their own flow, and their load
+          is counted separately from user traffic.
+        </P>
       </Section>
 
       <Section title="Colour convention">

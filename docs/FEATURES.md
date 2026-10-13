@@ -25,7 +25,8 @@ Open `/dashboard`. Four regions:
 | **Top toolbar** | Project name, undo/redo, templates, import, export, share, PNG, run, save indicator, AI panel, theme |
 | **Editing bar** | Copy, paste, duplicate, delete, group, ungroup, align, distribute, zoom, fit |
 | **Left sidebar** | Searchable component palette — drag onto the canvas |
-| **Right sidebar** | Node properties, the AI assistant, API-key management |
+| **Right sidebar** | Properties of the selected node or connection, the AI assistant, API-key management |
+| **Simulation panel** | Trace, Load, Ramp and Calls tabs; appears when you run a trace or open the load playground |
 
 The canvas itself supports pan (drag empty space), zoom (scroll / controls), box
 selection (drag) and multi-select (Shift or ⌘/Ctrl click).
@@ -35,12 +36,24 @@ selection (drag) and multi-select (Shift or ⌘/Ctrl click).
 1. **Add nodes** — drag from the left palette, or double-click an existing node
    to open its properties.
 2. **Connect them** — drag from the handle at the bottom of one node to the
-   handle at the top of another. Edges are directional; direction is what the
-   simulation follows.
+   handle at the top of another. Draw from the component that *initiates* the
+   interaction to the one that receives it: caller → service, producer → queue,
+   queue → consumer, poller → the thing it polls.
 3. **Describe them** — select a node and use the Properties tab to set its
    label, description and colour. A described diagram is a document; an
    undescribed one is a picture.
-4. **Delete a connection** — click the edge, then the ✕ button on it.
+4. **Say what each connection does** — double-click a connection to set its
+   operation, endpoint or topic, timeout and call order. Leave it alone and the
+   operation is inferred. See [Flow simulation](#flow-simulation).
+5. **Delete a connection** — select it, then the ✕ button on it or *Delete
+   connection* in Properties.
+
+The palette holds 60+ components in ten categories: clients, compute (including
+ready-made **Worker** and **Cron Job** components), databases, storage and
+media, messaging and streams, networking, payments, auth providers, monitoring
+and logs, and cloud providers.
+
+Right-click a node for edit, duplicate, delete and failure injection.
 
 Colours available: default (grey), blue, green, red, yellow, purple, orange.
 Convention used by the built-in templates: clients blue, compute green, storage
@@ -69,37 +82,75 @@ red, messaging yellow.
 | Delete / Backspace | Delete selection |
 | Arrow keys | Nudge 1px |
 | Shift + Arrow keys | Nudge 10px |
+| ⌘/Ctrl + Z | Undo |
+| ⌘/Ctrl + Shift + Z · Ctrl + Y | Redo |
+
+Inside a text field, undo and redo act on the text, not the canvas. Dragging a node is one undo step however far
+it moves; selecting something is not an edit and is not recorded.
 
 ## Flow simulation
 
-Press **Run** (▶) in the toolbar to watch data move through the architecture.
+### Every connection is a numbered request
 
-Nautilus computes a **layered execution plan** from the graph:
+A connection is a specific interaction, drawn from the component that initiates
+it to the one that receives it. Select one (or double-click it) and set it in
+**Properties**:
 
-- Nodes with no incoming edges are the entry points and light up first.
-- Each following step contains every node whose upstream nodes have all
-  finished — so two parallel services light up *together*, rather than being
-  forced into an arbitrary single-file order.
-- Edges pulse as data travels along them; completed nodes keep a dim trail so
-  you can see how far the run has got.
+| Operation | Who waits | Use it for |
+| --- | --- | --- |
+| `GET` `POST` `PUT` `PATCH` `DELETE` `CALL` | The caller | HTTP and RPC between services |
+| `READ` `WRITE` `QUERY` | The caller | Cache and database access |
+| `PUBLISH` `EVENT` | Nobody — it is a hand-off | Producing to a queue; fire-and-forget calls |
+| `CONSUME` | The consumer pulls at its own pace | Queue → consumer; what it cannot take stays queued |
+| `POLL` | The source asks on a timer | Checking a table or API every few seconds |
 
-The transport panel at the bottom of the canvas gives you:
+Each connection also takes an endpoint or topic (`/orders/:id`,
+`order.created`), a timeout, a call order, a traffic share and a fan-out.
+Connections you have not labelled are inferred from what they join, so existing
+diagrams read correctly as they are.
+
+Every connection shows its **step number**. A request is followed depth-first
+through the calls its handler waits on; what a publish sets off is numbered
+after the request that caused it; cron jobs, worker loops and pollers come last
+as flows of their own. The **Calls** tab lists every hop with what triggers it.
+
+### Cron jobs, workers and polling
+
+In **Properties ▸ Runs on its own** a component can be a **cron job** (fires
+once per interval, however many replicas exist) or a **worker loop** (every
+replica runs it continuously). A `POLL` connection does the same for a single
+call. This load is independent of user traffic and is reported separately.
+
+### Trace
+
+Press **Run** (▶) in the toolbar to replay the numbered requests one at a time.
+The connection in flight lights up with the two components it joins, and the
+panel names it — who calls whom, with what, whether anyone waits, and what set
+it off.
 
 | Control | Purpose |
 | --- | --- |
 | ▶ / ⏸ | Play or pause |
-| ⏭ | Advance exactly one step (pauses the run) |
+| ⏮ / ⏭ | Move exactly one request back or forward (pauses the run) |
 | ■ | Stop and clear all highlighting |
 | 0.5× · 1× · 2× · 4× | Playback speed |
-| Progress bar | Step *n* of *m*, and how many nodes are active in this step |
+| Request list | Click any row to jump to it |
 
 It also reports problems it found rather than failing silently:
 
-- **Cycles** — nodes in a loop can never have all dependencies satisfied, so
-  they are called out and run together as a final step.
-- **Dangling connections** — edges pointing at a deleted node are skipped.
+- **Cycles** — each node in a loop is visited once, then the loop is cut.
+- **Flows nothing starts** — no entry point and nothing on a schedule.
 - **Isolated nodes** — nodes with no connections at all.
 - **Empty canvas** — nothing to run.
+
+### Runs in your browser
+
+There is no simulation backend. The load playground compiles the diagram once
+inside a **Web Worker** — a background thread of the visitor's own browser —
+and each run after that only sends the load parameters. Nothing is sent to a
+server, moving nodes does not re-run anything, and only one run is ever in
+flight, so a slow machine cannot build up a queue of stale work. Large diagrams
+automatically skip off-screen elements, unreadable badges and animations.
 
 Simulation state is never written into your document: it does not enter undo
 history, autosave, exported JSON or share links, and stopping a run is instant.
@@ -159,8 +210,10 @@ Three things it will tell you that a drawing cannot:
   design doc or a PR.
 
 Results update live as you edit either the graph or the parameters. Each node
-shows a utilisation bar, its served rate and its queue-inflated latency; the
-panel reports exit throughput, dropped traffic, egress bandwidth, the slowest
+shows a utilisation bar, its served rate and its queue-inflated latency; each
+connection's badge gains its live call rate and response time, with a red
+outline when its p95 is over its own timeout and an amber one when a consumer
+on it is falling behind. The panel reports exit throughput, dropped traffic, egress bandwidth, the slowest
 path against the timeout, and ranked bottlenecks you can click to jump to.
 
 Two throughput numbers, deliberately different: **exit throughput** counts
@@ -168,13 +221,15 @@ traffic leaving the exit nodes (a request that fans out to three stores counts
 three times), while **% served** is the share of every call in the graph —
 internal hops included — that was served rather than shed.
 
-Edges support two optional fields in exported JSON (`edge.data.sim`):
-`share` (fraction of requests taking this edge — load balancing, cache misses)
-and `fanout` (calls made per request). Both default to 1.
+Connections carry `share` (fraction of requests taking this edge — load
+balancing, cache misses) and `fanout` (calls made per request). Both default to
+1 and are edited on the connection; in exported JSON they live in
+`edge.data.sim`, beside the request itself in `edge.data.flow`.
 
 It is a steady-state analytical model with an M/M/1 queue approximation — good
 for finding capacity mistakes and bottlenecks, not for predicting a p99. Traffic
-through a cycle is undefined and reported as such.
+through a cycle is undefined and reported as such. The formulas are written out
+in [ARCHITECTURE.md](ARCHITECTURE.md#the-load-model).
 
 ## Templates
 
@@ -264,6 +319,19 @@ would be upset to lose.
         "description": "Authorises and captures charges",
         "sim": { "capacity": 4000, "replicas": 6, "latencyMs": 25, "errorRate": 0.001 }
       }
+    },
+    {
+      "id": "sweeper",
+      "type": "nautilusNode",
+      "position": { "x": 420, "y": 40 },
+      "data": {
+        "label": "Settlement Job",
+        "icon": "cron",
+        "sim": {
+          "capacity": 500,
+          "schedule": { "kind": "cron", "everyMs": 300000, "batch": 200 }
+        }
+      }
     }
   ],
   "edges": [
@@ -272,10 +340,19 @@ would be upset to lose.
       "source": "api",
       "target": "db",
       "type": "deletableEdge",
-      "label": "cache miss",
-      "data": { "sim": { "share": 0.15, "fanout": 1 } }
+      "data": {
+        "flow": { "op": "QUERY", "path": "charges", "timeoutMs": 250 },
+        "sim": { "share": 0.15, "fanout": 1 }
+      }
     }
-  ]
+  ],
+  "sim": {
+    "requestsPerSecond": 10000,
+    "timeoutMs": 500,
+    "payloadKb": 8,
+    "targetUtilization": 0.7,
+    "burstFactor": 2
+  }
 }
 ```
 
@@ -290,10 +367,21 @@ would be upset to lose.
 | `data.sim.costPerHour` | node — price of one replica per hour | `0` |
 | `data.sim.hitRate` | node — share answered here, not forwarded, 0–1 | `0` |
 | `data.sim.queue` | node — buffers past capacity instead of dropping | auto by icon |
+| `data.sim.schedule.kind` | node — `cron` (once per interval) or `worker` (every replica loops) | absent |
+| `data.sim.schedule.everyMs` | node — interval between firings, 1 ms to one week | required with `kind` |
+| `data.sim.schedule.batch` | node — jobs started per firing | `1` |
 | `sim` (top level) | diagram — playground parameters | defaults |
+| `data.flow.op` | edge — one of the 13 operations | inferred |
+| `data.flow.path` | edge — endpoint, topic, table or key; descriptive only | empty |
+| `data.flow.order` | edge — position among the source's outgoing calls; lower runs first | as drawn |
+| `data.flow.intervalMs` | edge — `POLL` only: time between polls, per replica | `5000` |
+| `data.flow.timeoutMs` | edge — how long the caller waits; flagged when p95 exceeds it | none |
 | `data.sim.share` | edge — fraction of requests taking this edge, 0–1 | `1` |
 | `data.sim.fanout` | edge — calls made per request | `1` |
-| `data.sim.async` | edge — hand-off; latency past it is a background pipeline | auto into queues |
+| `data.sim.async` | edge — legacy hand-off flag; `flow.op: "EVENT"` says the same thing | auto into queues |
+
+Limits enforced on import: 2,000 nodes, 4,000 connections, 2,000 characters per
+text field, and a ceiling on every number.
 
 The simulation fields ride along through export, import, share links and
 autosave, so a diagram carries its capacity model — and the playground
@@ -329,10 +417,13 @@ targets:
   notice; the marketing, about and docs pages are fully responsive.
 - **No accounts, no server-side persistence, no realtime collaboration.**
 - **Undo history is capped at 50 steps** and is not persisted across reloads.
-- **The simulation is structural.** It animates dependency order — it does not
-  model latency, throughput, failure or queueing.
-- **No edge labels or custom edge routing** in the UI yet.
+- **The simulation is a model, not a measurement.** Endpoints you name are
+  never called; retries, circuit breakers and cold starts are not simulated.
+- **No custom edge routing** in the UI yet.
 - **Vertical layout only** for auto-layout; no left-to-right mode.
 - **PNG export only** — no SVG or PDF.
 - **Group nodes are excluded from simulation**, by design (they are visual
   containers, not services).
+- **Very large diagrams are bounded by the canvas library.** Off-screen elements
+  are skipped, but with close to a thousand elements on screen at once, dragging
+  is noticeably slower on a low-end machine.
