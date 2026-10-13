@@ -592,7 +592,11 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
       setLoadParams,
       undo,
       redo,
+      // History lives in refs so recording it never re-renders. Every change
+      // to it comes with a state change, so these are current at render time.
+      // eslint-disable-next-line react-hooks/refs
       canUndo: canUndo(),
+      // eslint-disable-next-line react-hooks/refs
       canRedo: canRedo(),
       resetHistory,
       isSaved,
@@ -621,6 +625,7 @@ export function FlowProvider({ children }: { children: React.ReactNode }) {
 
   // Published during render so children mounting in this same pass can read
   // it; subscribers that are already mounted are told once it has committed.
+  // eslint-disable-next-line react-hooks/refs
   store.publish(value)
   useLayoutEffect(() => {
     store.notify()

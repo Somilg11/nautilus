@@ -30,5 +30,12 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Audit dependencies
-        run: npm audit --audit-level=high
+      # What ships to users must be clean at high severity.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      # Build and lint tooling never reaches a browser, and some advisories
+      # there have no patched release (braces, via the Next.js lint plugin).
+      # Still fail on anything critical.
+      - name: Audit development dependencies
+        run: npm audit --audit-level=critical

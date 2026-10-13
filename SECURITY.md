@@ -64,7 +64,8 @@ Out of scope:
 - API keys are sent only to the provider the user selected, over HTTPS, and are
   never logged or transmitted anywhere else.
 - Simulations run in a same-origin Web Worker and make no network requests.
-- `npm audit` is enforced in CI.
+- `npm audit` is enforced in CI: production dependencies must be clean at high
+  severity, and development tooling at critical.
 
 ## Known limitations
 
@@ -73,7 +74,9 @@ Out of scope:
   replacing `'unsafe-inline'` with those exact hashes
   (`scripts/csp-hashes.mjs`). Injected inline scripts and inline event handlers
   are then refused by the browser. A deployment built with a bare `next build`,
-  and the development server, keep the looser `'unsafe-inline'` policy.
+  the development server, and any host where the step cannot find the build
+  output — currently including Vercel — keep the looser `'unsafe-inline'`
+  policy. The build log line starting `csp-hashes:` says which one you got.
 - `style-src` still allows `'unsafe-inline'`: the canvas positions nodes with
   inline styles. Injected CSS cannot run script, and `connect-src` and
   `img-src` limit where it could send anything.
