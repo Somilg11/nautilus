@@ -367,8 +367,11 @@ The threat is unusual: there is no server to attack, but **API keys sit in
   post-build step hashes them (about 25 hashes over 22 pages) and swaps
   `'unsafe-inline'` for those hashes in the header the host serves. Verified in
   Chrome: an injected `<script>` and an injected `onerror` handler both fail to
-  run. The trade-off is that the step edits framework build output, so it needs
-  checking on Next.js upgrades.
+  run. The trade-off is that the step edits framework build output and depends
+  on where the host puts it: it works under `next start`, but on Vercel it
+  finds no prerendered HTML and falls back to the default policy. It first
+  shipped failing the build in that case and broke a deploy — hardening should
+  degrade, not block, so it now logs and skips.
 - **What is left.** `style-src` still allows inline styles (the canvas needs
   them), and keys in `localStorage` are readable by anything that does run on
   the origin, such as a browser extension.

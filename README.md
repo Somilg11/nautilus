@@ -306,7 +306,7 @@ npm run lint && npm run typecheck && npm test && npm run build
 | **No server-side state** | Diagrams live in `localStorage` and in files you export. |
 | **No telemetry** | The app makes no network calls of its own. Running a simulation makes none at all. |
 | **Bring your own key** | AI requests go straight from the browser to the provider you chose. Keys are stored in `localStorage` under the app's origin. |
-| **Content-Security-Policy** | No third-party script origins, workers from the app's own origin, `connect-src` limited to the four AI provider hosts, `frame-ancestors 'none'`, `object-src 'none'`. Plus HSTS, `nosniff`, `Referrer-Policy` and `Permissions-Policy`. Inline scripts are limited to the exact hashes of the ones the build emitted, so an injected script does not run — and pages stay static, with no per-request nonce. |
+| **Content-Security-Policy** | No third-party script origins, workers from the app's own origin, `connect-src` limited to the four AI provider hosts, `frame-ancestors 'none'`, `object-src 'none'`. Plus HSTS, `nosniff`, `Referrer-Policy` and `Permissions-Policy`. When served with `next start`, inline scripts are limited to the exact hashes of the ones the build emitted, so an injected script does not run — and pages stay static, with no per-request nonce. Hosts where that build step cannot apply (see [SECURITY.md](SECURITY.md)) fall back to allowing inline scripts. |
 | **Untrusted input** | Imports, share links, stored diagrams and AI output all pass through one validator that keeps known fields only and clamps every number. |
 | **Share links** | The whole diagram is compressed into the URL. Unlisted, not private. |
 

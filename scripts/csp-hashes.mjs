@@ -12,8 +12,12 @@
  * Runs after `next build`. It hashes every inline script in the prerendered
  * HTML and rewrites the Content-Security-Policy header in
  * `.next/routes-manifest.json`, which is what `next start` and hosting
- * platforms serve headers from. Skipping this step is safe: the build then
- * keeps the looser `'unsafe-inline'` policy from next.config.ts.
+ * platforms serve headers from.
+ *
+ * This is hardening, never a reason to fail a deploy. Build output is laid out
+ * differently on some hosts, so whenever the script cannot find what it
+ * expects it says what it saw and exits cleanly; the build then keeps the
+ * looser `'unsafe-inline'` policy from next.config.ts, which always works.
  */
 import { createHash } from "node:crypto"
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
@@ -27,9 +31,25 @@ const MANIFEST = path.join(ROOT, ".next", "routes-manifest.json")
 const INLINE_SCRIPT = /<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g
 const SCRIPT_SRC = /script-src [^;]*/
 
-function fail(message) {
-  console.error(`csp-hashes: ${message}`)
-  process.exit(1)
+/** Leave the policy as next.config.ts wrote it, and say why. */
+function skip(message) {
+  console.warn(`csp-hashes: ${message} Keeping the default policy ('unsafe-inline').`)
+  process.exit(0)
+}
+
+/** What the build output looks like, for diagnosing a host that differs. */
+function describe(dir) {
+  const counts = {}
+  const walk = (current, depth) => {
+    if (depth > 6) return
+    for (const name of readdirSync(current)) {
+      const file = path.join(current, name)
+      if (statSync(file).isDirectory()) walk(file, depth + 1)
+      else counts[path.extname(name) || "(none)"] = (counts[path.extname(name) || "(none)"] ?? 0) + 1
+    }
+  }
+  walk(dir, 0)
+  return JSON.stringify(counts)
 }
 
 function htmlFiles(dir) {
@@ -40,8 +60,12 @@ function htmlFiles(dir) {
   })
 }
 
+process.on("uncaughtException", (err) => skip(`unexpected error (${err.message}).`))
+
 if (!existsSync(APP_DIR) || !existsSync(MANIFEST)) {
-  fail("no production build found — run `next build` first.")
+  skip(
+    `no build output where expected (app dir: ${existsSync(APP_DIR)}, routes manifest: ${existsSync(MANIFEST)}).`
+  )
 }
 
 const hashes = new Set()
@@ -56,7 +80,10 @@ for (const file of pages) {
 }
 
 if (pages.length === 0 || hashes.size === 0) {
-  fail("found no prerendered pages with inline scripts; leaving the policy untouched.")
+  skip(
+    `found ${pages.length} prerendered page(s) and ${hashes.size} inline script(s) in .next/server/app ` +
+      `(files by type: ${describe(APP_DIR)}).`
+  )
 }
 
 const manifest = JSON.parse(readFileSync(MANIFEST, "utf8"))
@@ -73,7 +100,7 @@ for (const rule of manifest.headers ?? []) {
 }
 
 if (patched === 0) {
-  fail("no Content-Security-Policy header with a script-src directive in the routes manifest.")
+  skip("no Content-Security-Policy header with a script-src directive in the routes manifest.")
 }
 
 writeFileSync(MANIFEST, JSON.stringify(manifest))

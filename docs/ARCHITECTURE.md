@@ -504,8 +504,12 @@ replacing `'unsafe-inline'` with those hashes. `next.config.ts` keeps
 works, just with the looser policy.
 
 The cost: the step edits framework build output, so it is the piece most likely
-to need attention on a Next.js upgrade. It exits non-zero if it finds no pages
-or no policy to patch, so that failure is loud.
+to need attention on a Next.js upgrade, and it depends on where a host puts its
+build output. It is hardening, so it never fails a build: when it cannot find
+prerendered pages or a policy to patch, it logs what it saw and leaves the
+default policy in place. That is the case on Vercel today — the step is
+verified with `next start`; on Vercel the build log line starting `csp-hashes:`
+says whether it applied.
 
 A static export cannot send these headers — they have to be re-created at the
 CDN.

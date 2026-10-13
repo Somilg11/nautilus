@@ -74,7 +74,9 @@ Out of scope:
   replacing `'unsafe-inline'` with those exact hashes
   (`scripts/csp-hashes.mjs`). Injected inline scripts and inline event handlers
   are then refused by the browser. A deployment built with a bare `next build`,
-  and the development server, keep the looser `'unsafe-inline'` policy.
+  the development server, and any host where the step cannot find the build
+  output — currently including Vercel — keep the looser `'unsafe-inline'`
+  policy. The build log line starting `csp-hashes:` says which one you got.
 - `style-src` still allows `'unsafe-inline'`: the canvas positions nodes with
   inline styles. Injected CSS cannot run script, and `connect-src` and
   `img-src` limit where it could send anything.
