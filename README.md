@@ -1,367 +1,340 @@
 <div align="center">
 
-# Nautilus 🐚
+# Nautilus
 
-**Design a system, number every request in it, then push traffic through it until something breaks — all in your browser.**
-
-No accounts. No backend. No lock-in.
+**Design software architecture, explain request flows, and explore capacity bottlenecks in your browser.**
 
 [![CI](https://github.com/Somilg11/nautilus/actions/workflows/ci.yml/badge.svg)](https://github.com/Somilg11/nautilus/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[Live app](https://nautilusss.vercel.app) ·
-[Documentation](https://nautilusss.vercel.app/docs) ·
-[Features](docs/FEATURES.md) ·
-[Architecture](docs/ARCHITECTURE.md) ·
-[Self-hosting](docs/SELF_HOSTING.md) ·
-[Contributing](CONTRIBUTING.md)
+[Live app](https://nautilusss.vercel.app) · [Documentation](https://nautilusss.vercel.app/docs) · [Interview preparation](about.md)
 
-<img src="docs/images/nautilus-canvas.png" alt="The Nautilus editor: an order platform where every connection carries a numbered, colour-coded request — GET, POST, WRITE, PUBLISH, CONSUME, POLL and a cron-driven QUERY" width="100%" />
+<img src="docs/images/nautilus-canvas.png" alt="Nautilus architecture canvas with numbered request connections" width="100%" />
 
 </div>
 
----
+## What the project does
 
-## What it is
+Nautilus is a local-first system-design editor. A diagram is a directed graph: nodes represent components, and edges describe interactions. You can replay those interactions, configure component capacity, and explore how a hypothetical architecture behaves under load.
 
-Most architecture diagrams are pictures. A Nautilus diagram is a **directed graph
-with a request model on every connection and a capacity model on every
-component**, which is what lets the tool answer questions a drawing cannot:
+The editor, graph algorithms, and load model run in the browser. There is no application API, database, authentication service, or server-side diagram storage. The default deployment still uses Next.js to build and serve the application; the CLI and Electron shell start a local Next.js production server. Optional AI requests go directly to the selected provider.
 
-- **Which request goes where, and in what order?** Every connection is a
-  numbered request — `4 PUBLISH order.created`, `13 POLL users every 30s`.
-- **Who starts work on their own?** Cron jobs, worker loops and pollers are
-  first-class, and their load is there at 3am with nobody online.
-- **Where does this design stop working?** Push traffic through it and read off
-  the bottleneck, the backlog, the p95 and the monthly bill.
+The load playground is an **analytical model**, not a real load test. It does not send traffic to the services drawn on the canvas. Company-inspired templates are educational examples, not verified representations of those companies' production systems.
 
-Everything runs on the visitor's machine. The deployed site serves static files
-and nothing else: there is no API, no database, no telemetry, and no environment
-variable to set.
+## Features
 
-## Highlights
-
-| | |
+| Area | Implemented behavior |
 | --- | --- |
-| **Numbered request flow** | 13 operations (`GET` `POST` `PUT` `PATCH` `DELETE` `CALL` `READ` `WRITE` `QUERY` `PUBLISH` `EVENT` `CONSUME` `POLL`) with an endpoint or topic, timeout, call order, traffic share and fan-out. Unlabelled connections are inferred from what they join. |
-| **Trace** | Replays the numbered requests one at a time with play, pause, step back and forward, click-to-jump and 0.5×–4× speed. |
-| **Cron, workers, polling** | A component can fire on a schedule or loop on every replica; a connection can poll on a timer. Reported separately from user traffic. |
-| **Load playground** | Capacity, replicas, latency, error rate, cache hit ratio and price per node. Live utilisation, queue-inflated latency, drops, queue backlog, consumer lag and ranked bottlenecks. |
-| **Capacity & cost** | Replica counts sized to a target utilisation (`Payment Service 8 → 90`), the monthly bill that implies, and cost per million requests. One click to apply. |
-| **Load ramp** | Sweeps from zero and plots offered against delivered. The knee is where the design gives out; the panel also names the load at which p95 first breaches your budget. |
-| **Failure injection** | Take a node out and see which paths die and what the success rate becomes. Pin a baseline to see every change as a delta. |
-| **In-browser engine** | The load model runs in a Web Worker: compiled once per edit, re-run with parameters only, one run in flight at a time. |
-| **Large diagrams** | Off-screen elements are not mounted, unreadable badges are hidden, and decorative effects switch off automatically on big diagrams and low-end devices. |
-| **Component library** | 60+ draggable components across clients, compute, databases, storage, messaging, networking, payments, auth, monitoring and cloud providers. |
-| **Templates** | Netflix, Uber, WhatsApp, Instagram, YouTube, Spotify, Zomato, three-tier and microservices — each modelled to serve its own rated load. |
-| **AI assistant** | Bring your own OpenAI, Gemini, Claude or Groq key. It sees your canvas, and nothing it generates is applied without your say-so. |
-| **Sharing** | JSON export and import, PNG export, self-contained share links, and a Markdown capacity report for design docs and pull requests. |
-| **Runs anywhere** | Vercel, any Node host, a static CDN, one `npx` command, or a packaged desktop app. |
+| Architecture canvas | React Flow editor with pan, zoom, selection, minimap, drag-and-drop, node properties, and editable connections |
+| Component palette | 61 items across 10 categories: clients, compute, databases, storage/media, messaging, networking, payments, auth providers, monitoring/logs, and cloud providers |
+| Editing tools | Copy/paste, duplicate, delete, group/ungroup, align, distribute, keyboard nudging, undo, and redo |
+| Request model | 13 operations: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `CALL`, `READ`, `WRITE`, `QUERY`, `PUBLISH`, `EVENT`, `CONSUME`, `POLL` |
+| Connection properties | Operation, endpoint/topic, call order, timeout, polling interval, traffic share, and fan-out; inferred operations for unannotated edges |
+| Trace playback | Numbered request replay with play, pause, stop, step back/forward, jump-to-step, and 0.5×, 1×, 2×, or 4× speed |
+| Background work | Interval-based cron jobs, per-replica worker loops, and polling edges, with generated load reported separately |
+| Load playground | Capacity, replicas, service latency, baseline error rate, cache hits, failure injection, utilization, modeled p95, drops, backlog, consumer lag, and bandwidth estimates |
+| Capacity planning | Replica recommendations for a target utilization, optional hourly cost inputs, monthly cost estimates, and application of scale recommendations |
+| Comparison | Pin a simulation baseline and inspect changes against it |
+| Load ramp | Sample offered load versus exit throughput; report the first sampled overload/backlog point and timeout breach |
+| Templates | Three-tier, microservices, Uber, Instagram, Spotify, Netflix, WhatsApp, YouTube, and Zomato |
+| AI assistant | Bring-your-own-key OpenAI, Gemini, Claude, and Groq clients; conversation, review, and proposed diagrams with replace/add/discard controls |
+| Persistence and sharing | Browser autosave, JSON import/export, PNG export, compressed diagram URLs, and Markdown capacity reports |
+| Presentation | Light/dark themes, landing page, documentation routes, metadata, sitemap, robots configuration, and web app manifest |
+| Distribution | Next.js web app, local CLI launcher, and optional Electron shell with installer build configuration |
 
-## Quick start
+Icons such as PostgreSQL, Kafka, Redis, Stripe, AWS, and Kubernetes are **diagram components**. This repository does not operate those systems or integrate with their service APIs.
 
-Use it right now at **[nautilusss.vercel.app](https://nautilusss.vercel.app)**, or
-run it yourself:
+## Technology stack
+
+Versions below come from the committed manifests and lockfile, not claims about the latest upstream releases.
+
+| Technology | Version in repository | Purpose |
+| --- | --- | --- |
+| Next.js | `^16.3.1` declared; `16.4.0` locked | App Router, page routing, metadata, build, and HTTP serving |
+| React / React DOM | `19.2.0` | Interactive editor and UI |
+| TypeScript | `^5` declared; `5.9.3` locked | Strict type checking for UI, document shapes, and simulation contracts |
+| React Flow (`reactflow`) | `11.11.4` locked | Node/edge canvas, handles, viewport, selection, and minimap |
+| Tailwind CSS | `4.1.17` locked | Styling, with local shadcn-style components and Radix primitives |
+| Web Workers | Browser API | Load computation outside the UI thread, with an inline fallback |
+| `lz-string` | `^1.5.0` declared | Diagram compression for share URLs |
+| `html-to-image` | `^1.11.13` declared | PNG capture of the canvas element |
+| `next-themes` | `^0.4.6` declared | Theme preference and switching |
+| Lucide / React Icons | See `package.json` | Interface icons and architecture palette icons |
+| Sonner / UUID | See `package.json` | Notifications and generated node identifiers |
+| `react-hotkeys-hook` | `^5.2.1` declared | Installed dependency; current canvas shortcuts use native `keydown` listeners instead |
+| CVA / `clsx` / `tailwind-merge` | See `package.json` | Component variants and class composition |
+| Vitest | `4.1.11` locked | Pure-core tests in Node |
+| ESLint | `^9` declared | Source linting with Next.js rules |
+| Electron / electron-builder | `43.7.9` / `26.17.0` locked | Optional desktop shell and installer packaging |
+| GitHub Actions | `.github/workflows/ci.yml` | Lint, type checking, tests, build, and dependency audits |
+
+React state and a small context/external-store layer manage the document; the project does not use a directly configured Redux or Zustand store. No ORM, database schema, or application REST API is present.
+
+## Run locally
+
+Use **Node.js 22.12.0 or newer within the 22.x release line** for a consistent web and desktop development setup. The locked Next.js package requires Node `>=20.9.0`; the locked Electron package requires `>=22.12.0`. CI currently configures Node 20 and does not test desktop packaging.
 
 ```bash
 git clone https://github.com/Somilg11/nautilus.git
 cd nautilus
-npm install
-npm run dev          # http://localhost:3000
+npm ci
+npm run dev
 ```
 
-Requires **Node.js 20+**. There is nothing to configure.
+Open `http://localhost:3000/dashboard`. No environment file or AI key is required for editing, templates, traces, or load modeling. Dependency installation and the build may need internet access; the layout uses `next/font/google` for Geist fonts.
 
-<details>
-<summary><strong>Other ways to run it</strong></summary>
+For a production build:
 
 ```bash
-# One command: builds if needed, starts a local server, opens your browser
-npx github:Somilg11/nautilus
-npx github:Somilg11/nautilus --port 4000 --no-open
-
-# Native window (Electron shell around the same app)
-npm run desktop
-npm run desktop:build     # .dmg / .exe / AppImage
-
-# Production server
-npm run build && npm start
+npm run build
+npm start
 ```
 
-Docker, static export and reverse-proxy setups are covered in
-[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md).
+For the local browser launcher:
 
-</details>
+```bash
+npm run start:app -- --no-open
+npm run start:app -- --port 4000 --host 127.0.0.1 --no-open
+```
 
-### A two-minute tour
+The launcher builds if `.next/BUILD_ID` is absent, selects an available port starting at the requested port, and opens the default browser unless `--no-open` is provided. Rebuild after source changes; an existing production build is reused.
 
-1. Open `/dashboard`, then **Templates ▸ Microservices Architecture**.
-2. Read the badges: each connection shows its step number, operation and target.
-3. Press **Run** (▶) to replay the requests in order; open the **Calls** tab for
-   the full list with what triggers each one.
-4. Press the **gauge** button to open the load playground, then drag the load
-   slider until a node turns red.
-5. Open the **Ramp** tab to see where the design gives out, and apply the
-   capacity plan to move the knee.
-6. Double-click any connection to change what it does.
+For the Electron shell and installer targets:
 
-<img src="docs/images/nautilus-load.png" alt="The load playground: live rates on every connection, a saturated consumer reported as queue backlog, and a capacity plan with its monthly cost" width="100%" />
+```bash
+npm run desktop
+npm run desktop:build
+```
 
-*The load playground at 4,000 req/s. The notifier cannot keep up, so nothing is
-dropped — Kafka's backlog grows at 1.7k/s, and the plan says ten consumers
-would clear it for about $330 a month more.*
+The shell opens `/dashboard` using the same local production server. Configured targets are macOS DMG, Windows NSIS, and Linux AppImage. Packaging configuration is present; this documentation does not assert that signed installers have been released or tested on every platform. Desktop builds need normal Electron installation scripts enabled.
 
-## How it works
+### Optional configuration
+
+| Setting | Used by | Effect |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | `src/lib/site.ts` | Build-time canonical, sitemap, robots, and social metadata origin; defaults to `https://nautilusss.vercel.app` |
+| `PORT` | CLI launcher | Starting port; defaults to `3000`, and `--port` overrides it |
+| `NAUTILUS_PORT` | Electron shell | Starting local server port; defaults to `3777` |
+| `NAUTILUS_DEVTOOLS=1` | Electron shell | Opens renderer developer tools |
+
+Enter optional AI keys and model overrides in the right sidebar's Settings tab. They are browser settings, not server environment variables. Provider access, model availability, browser request policy, quotas, and billing are external requirements; configured defaults are not a guarantee that an account can use a model.
+
+### Deployment scope
+
+The checked-in configuration supports a standard Next.js build and server, including deployment through a compatible hosting platform. It does **not** enable `output: "export"`. Static-only hosting requires configuration changes and host-managed security headers. There is no committed Dockerfile or Docker Compose setup. See [self-hosting notes](docs/SELF_HOSTING.md) for examples, and check them against the current configuration before deployment.
+
+## Five-minute demo
+
+1. Open `/dashboard` and load the microservices template.
+2. Explain a numbered connection: source, target, operation, endpoint/topic, and whether the caller waits.
+3. Run the trace. Pause, step forward, and inspect the Calls tab.
+4. Open the load playground. Increase offered requests per second and identify the first constrained component.
+5. Explain why a service drops excess traffic while a queue accumulates backlog or a consumer leaves lag.
+6. Pin a baseline, change a replica count or cache hit ratio, and compare the results.
+7. Inspect the Ramp tab and capacity recommendation. Explain the assumptions before interpreting the numbers.
+8. Export JSON, copy a report, or generate a share URL. Use a synthetic diagram for a public demo.
+
+<img src="docs/images/nautilus-load.png" alt="Nautilus load playground showing graph metrics and capacity recommendations" width="100%" />
+
+Screenshots illustrate the UI; their values are scenario-specific model outputs.
+
+## Architecture and data flow
 
 ```mermaid
 flowchart LR
-  Host["Static host / CDN"] -- "HTML · JS · CSS" --> UI
-
-  subgraph Browser["Your browser — the only runtime"]
-    direction LR
-    UI["Canvas<br/>(React Flow)"] <--> Store["Flow store<br/>undo · autosave"]
-    Store --> Projector["Graph projector<br/>ignores drags and selection"]
-    Projector --> Sequence["computeSequence<br/>step numbers"]
-    Projector -- "graph, once per edit" --> Worker["Web Worker<br/>compile · run · ramp"]
-    Worker -- "report" --> Decorators["Render-time decorators"]
-    Sequence --> Decorators --> UI
-    Store <--> LS[("localStorage")]
-  end
-
-  UI -. "only when you ask the assistant,<br/>with your own key" .-> AI["AI provider"]
+  Host["Next.js host or local server"] --> UI["React Flow canvas"]
+  UI <--> Store["FlowProvider and external store"]
+  Store <--> Storage["Browser localStorage"]
+  Store --> Projector["Stable simulation graph"]
+  Projector --> Sequence["Request numbering and trace"]
+  Projector --> Worker["Web Worker: compile, run, ramp"]
+  Worker --> Decorators["Render-only metrics and highlights"]
+  Sequence --> Decorators
+  Decorators --> UI
+  UI -. "Explicit AI request using user's key" .-> Provider["Selected AI provider"]
 ```
 
-- **The document** is `{ name, nodes, edges, sim }` — plain JSON, validated on
-  every way in (import, share link, storage, AI output).
-- **The graph projector** hands the simulators the same object until something
-  structural changes, so dragging a node never re-runs anything.
-- **`computeSequence`** numbers every hop: depth-first through the calls a
-  handler waits on, hand-offs deferred until the request that caused them has
-  finished, self-starting flows last.
-- **The load engine** compiles the graph into index-addressed arrays inside a
-  Web Worker, then makes one pass in dependency order per run with an M/M/1
-  queueing approximation. A slider drag sends five numbers, not the diagram.
-- **Decorators** merge results into nodes and edges at render time only, so
-  simulation state never reaches undo history, autosave, exports or share links.
+1. **Document:** `{ name, nodes, edges, sim }` is the persistent diagram. `node.data.sim` stores component settings; `edge.data.flow` stores interaction semantics; `edge.data.sim` stores routing settings.
+2. **Store:** `FlowProvider` owns React state, immutable history snapshots, clipboard operations, import, and autosave. `useSyncExternalStore` exposes subscriptions with a stable store context.
+3. **Projection:** `createGraphProjector` ignores positions and selection. It reuses its result until relevant node data or edge structure changes. Cosmetic data edits may still invalidate it because node data is compared by reference.
+4. **Trace:** `computeSequence` infers or reads operations, sorts outgoing calls, follows synchronous/pull paths, and defers async/poll continuations. `useSimulation` replays this sequence; it executes no actual requests.
+5. **Load engine:** `compileGraph` builds indexed adjacency data. `runCompiled` evaluates demand, throughput, latency, and sizing; `sweepCompiled` reuses the compiled graph for ramp samples.
+6. **Scheduling:** one load run is in flight at a time; a newer waiting request replaces the previous queued request. The transport has a main-thread fallback if worker creation or loading fails.
+7. **Rendering:** cached decorators add metrics and trace marks to rendered objects. These computed fields are kept out of document state, history, and persistence.
 
-The full write-up, including the maths, is in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+### How to interpret the model
 
-## The file format
+| Quantity | Implemented interpretation |
+| --- | --- |
+| User load | Requests per second × burst factor, divided evenly across eligible entry points |
+| Component capacity | Per-replica capacity × replica count; absent or nonpositive capacity is treated as unbounded by the engine |
+| Downstream calls | Successful forwarded traffic × edge share × fan-out; cache hits reduce forwarding |
+| Scheduled work | Fixed-interval cron rate, per-replica worker rate, and per-replica poll rate; not a cron-expression parser |
+| Queue wait | M/M/1-style approximation based on configured latency and utilization, with numerical caps near saturation |
+| p95 | Single-hop exponential estimate and multi-hop mean/variance approximation; not measured latency |
+| Replica advice | Healthy upstream demand divided by per-replica capacity and target utilization, rounded up; worker self-load excluded from sizing demand |
+| Monthly cost | Configured hourly cost × replicas × 730; no cloud price lookup |
+| Delivered throughput | Sum of forwarded traffic at exit nodes; fan-out can make this exceed input RPS |
+| Displayed success rate | `1 - totalDropped / totalRequests` across internal calls; not end-user transaction success and not inclusive of baseline errors or timeout failures |
+| Ramp | Default 24 positive load samples up to `max(1000, 2 × current RPS)` in the UI; knee and timeout are sampled estimates |
 
-A diagram is one JSON object. Hand-written and script-generated files are safe
-to load: unknown fields are dropped and out-of-range values are clamped.
+See [about.md](about.md) for formulas, worked examples, trade-offs, and interview answers.
 
-```jsonc
+## Diagram format
+
+This complete example can be saved as JSON and imported. The API service has two replicas; every request queries the database.
+
+```json
 {
-  "name": "Orders",
+  "name": "Orders example",
   "nodes": [
     {
-      "id": "orders",
+      "id": "api",
       "type": "nautilusNode",
-      "position": { "x": 120, "y": 160 },
+      "position": { "x": 120, "y": 40 },
       "data": {
-        "label": "Order Service",
-        "icon": "microservice",
+        "label": "Orders API",
+        "icon": "api_server",
         "color": "green",
-        "sim": { "capacity": 1500, "replicas": 6, "latencyMs": 45, "costPerHour": 0.1 }
+        "sim": { "capacity": 500, "replicas": 2, "latencyMs": 20, "costPerHour": 0.1 }
       }
     },
     {
-      "id": "recon",
+      "id": "db",
       "type": "nautilusNode",
-      "position": { "x": 420, "y": 160 },
+      "position": { "x": 120, "y": 280 },
       "data": {
-        "label": "Reconciliation Job",
-        "icon": "cron",
-        "sim": { "capacity": 500, "schedule": { "kind": "cron", "everyMs": 300000, "batch": 200 } }
+        "label": "Orders database",
+        "icon": "postgres",
+        "color": "red",
+        "sim": { "capacity": 2000, "replicas": 1, "latencyMs": 10, "costPerHour": 0.2 }
       }
     }
   ],
   "edges": [
     {
-      "id": "e1",
-      "source": "orders",
-      "target": "kafka",
-      "data": { "flow": { "op": "PUBLISH", "path": "order.created" }, "sim": { "share": 0.8 } }
-    },
-    {
-      "id": "e2",
-      "source": "recon",
-      "target": "orders-db",
-      "data": { "flow": { "op": "QUERY", "path": "orders (pending)", "timeoutMs": 2000 } }
+      "id": "api-db",
+      "source": "api",
+      "target": "db",
+      "data": {
+        "flow": { "op": "QUERY", "path": "orders", "timeoutMs": 500 },
+        "sim": { "share": 1, "fanout": 1 }
+      }
     }
   ],
-  "sim": { "requestsPerSecond": 8000, "timeoutMs": 400, "targetUtilization": 0.7, "burstFactor": 2 }
+  "sim": {
+    "requestsPerSecond": 500,
+    "timeoutMs": 500,
+    "payloadKb": 8,
+    "targetUtilization": 0.7,
+    "burstFactor": 1
+  }
 }
 ```
 
-Every field is documented in
-[docs/FEATURES.md](docs/FEATURES.md#the-json-format).
+Imports, saved diagrams, share links, and AI proposals pass through `sanitizeDiagram`. It limits input to 2,000 nodes and 4,000 edges, bounds recognized simulation fields, caps strings, removes duplicate node IDs, repairs duplicate edge IDs, and drops connections with missing endpoints. It is input normalization, not a formal proof of safety; some nested metadata receives less validation.
 
-## Performance
+## Persistence, sharing, and security
 
-Measured in headless Chrome against a production build, with 4× CPU throttling,
-on a 336-node / 611-connection diagram: one node dragged through 60 pointer
-moves at the same zoom level. "Before" is the last commit prior to the
-request-model work.
+- Autosave writes the current diagram and load settings to `localStorage` after a 600 ms debounce. The project name has a separate key. History stores at most 50 node/edge snapshots in memory and resets on reload; project names and load parameters are not included in undo snapshots.
+- There is one current autosaved canvas per browser origin, not an account-based project database. Export JSON for backup or transfer.
+- Share links compress the diagram into `/dashboard?d=...` using `lz-string`. Compression is not encryption. Anyone with the URL can read the diagram, and URLs may appear in browser history and host logs. Links above 8,000 characters trigger a warning; use JSON for large diagrams.
+- AI keys, model preferences, and chat history are also stored in browser local storage. AI calls send the prompt, recent conversation, and a bounded canvas description to the selected provider. The app has no bundled analytics integration; ordinary asset, navigation, hosting, and optional AI network traffic still exists.
+- `next.config.ts` configures CSP and other HTTP security headers. `connect-src` permits the same origin and four provider hosts; `worker-src` permits the same origin and `blob:`. Inline styles remain allowed.
+- After a production build, `scripts/csp-hashes.mjs` attempts to replace inline-script permission with hashes in `.next/routes-manifest.json`. If expected output is unavailable, it logs a warning and retains `'unsafe-inline'`. Verify actual deployment headers; strict hash enforcement is not universal.
+- Electron enables `contextIsolation` and `sandbox`, disables renderer Node integration, and opens external navigation through the system browser.
 
-| Scenario | Before | Now |
-| --- | --- | --- |
-| Drag, load playground open — wall time | 12.7 s | 4.2 s |
-| Drag, load playground open — script time | 10.3 s | 1.6 s |
-| Drag, load playground closed — wall time | 6.9 s | 3.8 s |
-| Drag, load playground closed — script time | 4.5 s | 1.4 s |
-| One load run plus 24-point ramp, in the worker | — | 1–2 ms on the microservices template |
-
-Where the time went, and what replaced it:
-
-| Was | Now |
-| --- | --- |
-| Model plus a 24-sample ramp re-run on the main thread for every drag frame | Runs in a Web Worker, and only when the graph's structure or the parameters change |
-| `JSON.stringify` of the whole diagram on every change, for undo | Reference equality on immutable snapshots; a drag is one undo step |
-| Every node re-rendered on every canvas change | Memoised nodes and edges, identity-preserving decorators, store subscription in place of a changing context value |
-| Every element mounted | Only what is in the viewport |
-
-The remaining per-frame cost is React Flow v11 reconciling every mounted
-element; with all 947 elements on screen at once the same drag takes 6.5 s under
-the same throttle. See [Roadmap](#roadmap).
+API keys in local storage are readable by JavaScript running on the origin. Validation and CSP reduce exposure but do not make browser storage a secret vault. Use provider keys with appropriate scope and spending controls. See [SECURITY.md](SECURITY.md) for the repository's reporting process and threat model.
 
 ## Project structure
 
-```
-src/
-├── app/                      Next.js App Router
-│   ├── page.tsx              Landing page
-│   ├── dashboard/            The editor
-│   ├── docs/                 Documentation site (one route per page)
-│   └── about/
-├── components/
-│   ├── canvas.tsx            React Flow wrapper: editing, selection, simulation glue
-│   ├── toolbar.tsx           Import, export, share, run, undo, redo
-│   ├── left-sidebar.tsx      Component palette
-│   ├── right-sidebar.tsx     Node properties, AI assistant, API keys
-│   ├── edge-inspector.tsx    Connection properties: operation, endpoint, timing
-│   ├── simulation-panel.tsx  Trace, Load, Ramp and Calls tabs
-│   ├── nodes/  edges/        Custom node and edge renderers
-│   └── ui/                   shadcn/ui primitives
-└── lib/
-    ├── flow-ops.ts           Request model, inference, step numbering      (pure)
-    ├── flow-execution.ts     Dependency-order planner                      (pure)
-    ├── simulation-model.ts   compileGraph · runCompiled · sweepCompiled    (pure)
-    ├── sim-engine.ts         Message protocol around the model             (pure)
-    ├── sim-worker.ts         Web Worker entry point
-    ├── use-load-engine.ts    Worker lifecycle, latest-wins scheduling
-    ├── sim-graph.ts          Projector: canvas state → stable simulation graph
-    ├── canvas-decorate.ts    Render-time decoration with identity caching
-    ├── use-simulation.ts     Trace playback state machine
-    ├── flow-context.tsx      Canvas store, undo/redo, autosave, share links
-    ├── diagram-io.ts         Validation for untrusted diagram JSON
-    ├── ai-client.ts          Browser-side provider calls
-    └── templates/            Built-in architectures
-bin/                          npx launcher
-desktop/                      Electron shell
-docs/                         Markdown guides
+```text
+src/app/                         Landing, dashboard, docs, about, metadata routes
+src/components/canvas.tsx        Canvas wiring, editing, load controls, rendering
+src/components/toolbar.tsx       Import/export, sharing, commands
+src/components/left-sidebar.tsx  Component palette
+src/components/right-sidebar.tsx Node properties, AI chat, provider settings
+src/components/edge-inspector.tsx Connection editing
+src/components/simulation-panel.tsx Trace, Load, Ramp, Calls, comparison/report UI
+src/components/nodes/            Custom architecture and group nodes
+src/components/edges/            Edge badges, rendering, shared markers
+src/components/ui/               Local UI primitives
+src/lib/flow-context.tsx          Document state, history, persistence, imports
+src/lib/flow-ops.ts               Operations, inference, schedules, numbering
+src/lib/flow-execution.ts         Layered dependency planner
+src/lib/simulation-model.ts       Analytical model, ramp, cost/report helpers
+src/lib/sim-engine.ts             Worker-compatible message engine
+src/lib/sim-worker.ts             Web Worker entry point
+src/lib/use-load-engine.ts        Transport, scheduling, inline fallback
+src/lib/sim-graph.ts              Identity-preserving graph projection
+src/lib/canvas-decorate.ts        Cached render-time decorations
+src/lib/use-simulation.ts         Trace playback state machine
+src/lib/diagram-io.ts             Untrusted document normalization
+src/lib/ai-client.ts              Direct browser calls to four AI providers
+src/lib/ai-schema.ts              Diagram instructions for AI output
+src/lib/auto-layout.ts            Dependency-layer layout for AI proposals
+src/lib/templates/               Nine educational architectures
+src/lib/__tests__/               Six Vitest test files
+bin/                            CLI and shared local-server utilities
+desktop/                        Electron main process
+scripts/                        CSP post-build hardening and icon generation
+docs/                           Feature, architecture, deployment guides/images
+.github/workflows/ci.yml         Automated quality checks
 ```
 
-## Scripts
+## Commands and verification
 
-| Command | What it does |
+| Command | Purpose |
 | --- | --- |
-| `npm run dev` | Dev server with hot reload |
-| `npm run build` | Production build (type-checks too), then pins the CSP to the hashes of the emitted inline scripts |
-| `npm start` | Serve the production build |
+| `npm run dev` | Next.js development server |
+| `npm run build` | Next.js production build, then CSP hash patch attempt |
+| `npm start` | Serve an existing production build |
 | `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Unit tests (Vitest, single run) |
-| `npm run test:watch` | Unit tests in watch mode |
-| `npm run start:app` | Run the launcher the way `npx` users get it |
-| `npm run desktop` | Run the desktop shell |
-| `npm run desktop:build` | Package desktop installers |
+| `npm run typecheck` | TypeScript without emitting application code |
+| `npm test` | Vitest test suite in Node |
+| `npm run test:watch` | Vitest watch mode |
+| `npm run start:app` | Local CLI launcher |
+| `npm run desktop` | Electron shell |
+| `npm run desktop:build` | Web production build followed by electron-builder |
 
-## Quality
-
-- **113 unit tests** across the request model, the load model, the engine
-  protocol, the planner, diagram validation and every built-in template. The
-  template suite fails the build if a template cannot serve its own rated load
-  or lays out with overlapping nodes.
-- **Pure core.** Everything that computes — numbering, queueing, capacity,
-  validation — has no React and no DOM, so it runs unchanged in a worker and in
-  Node under test.
-- **CI on every push and pull request:** lint, type check, tests, production
-  build, and `npm audit` — high severity for what ships, critical for tooling.
+Run checks separately so each failure is visible:
 
 ```bash
-npm run lint && npm run typecheck && npm test && npm run build
+npm run lint
+npm run typecheck
+npm test
+npm run build
 ```
 
-## Security and privacy
+The suite defines **113 test cases in six files**, including 45 parameterized template checks. Coverage includes request inference/numbering, graph planning, load arithmetic, queue/cache/schedule semantics, cost/ramp/report behavior, validation, engine serialization, and graph projection. There are no committed React component tests or browser end-to-end tests. Test count describes the checked-in suite; use `npm test` for the result in your environment.
 
-| | |
+CI runs for pushes to `main` and pull requests: dependency install, lint, typecheck, tests, build, production dependency audit at high severity, and full dependency audit at critical severity. Audit steps are configured gates, not a claim that the current dependency tree has no advisories.
+
+## Limits and next steps
+
+- The model assumes steady state and an approximate pooled M/M/1 queue. It does not implement real request execution, retries, circuit breakers, queue retention limits, autoscaling delay, or a discrete-event simulation.
+- Capacity and service time are independent user inputs. Estimates require consistent assumptions and comparison with real measurements before operational use.
+- Cyclic graphs are flagged. Kahn's unresolved remainder includes nodes downstream of cycles; the engine still produces a bounded single-pass result, which is not a solved feedback model. Self-loops carry no traffic.
+- Edge call order controls trace numbering. Load latency follows the slowest dependency path; it does not sum all explicitly ordered sibling calls.
+- Ramp capacity thresholds are sampled estimates; latency budget breaches are reported separately from the ramp's drop/backlog cleanliness test.
+- The editor is desktop-first. Viewport culling, memoized renderers, cached decorators, and reduced decoration help large diagrams, but no node-count or frame-rate guarantee is established here.
+- PNG captures the canvas DOM element; JSON is the editable document format. SVG/PDF export and live multi-user collaboration are not implemented.
+- A manifest is present, but no service worker or guaranteed offline installation is implemented.
+
+Potential improvements include better sequential-call latency semantics, error-aware transaction success reporting, transport stale-result rejection, browser regression tests, richer queue/retry models, weighted entry traffic, and explicit static-export/desktop release verification. These are future work, not shipped features.
+
+## Further reading
+
+| Document | Purpose |
 | --- | --- |
-| **No server-side state** | Diagrams live in `localStorage` and in files you export. |
-| **No telemetry** | The app makes no network calls of its own. Running a simulation makes none at all. |
-| **Bring your own key** | AI requests go straight from the browser to the provider you chose. Keys are stored in `localStorage` under the app's origin. |
-| **Content-Security-Policy** | No third-party script origins, workers from the app's own origin, `connect-src` limited to the four AI provider hosts, `frame-ancestors 'none'`, `object-src 'none'`. Plus HSTS, `nosniff`, `Referrer-Policy` and `Permissions-Policy`. When served with `next start`, inline scripts are limited to the exact hashes of the ones the build emitted, so an injected script does not run — and pages stay static, with no per-request nonce. Hosts where that build step cannot apply (see [SECURITY.md](SECURITY.md)) fall back to allowing inline scripts. |
-| **Untrusted input** | Imports, share links, stored diagrams and AI output all pass through one validator that keeps known fields only and clamps every number. |
-| **Share links** | The whole diagram is compressed into the URL. Unlisted, not private. |
-
-Because keys sit in the browser, any script execution on the origin is a
-key-disclosure bug. The threat model and reporting process are in
-[SECURITY.md](SECURITY.md) — please report vulnerabilities privately.
-
-## Limitations
-
-- **It is a model, not a measurement.** Endpoints you name are never called.
-  The load playground is a steady-state analytical model: no retries, circuit
-  breakers, cold starts or per-request variance. Use it to find capacity
-  mistakes and bottlenecks, not to predict a p99.
-- **Traffic through a cycle is undefined** and reported as such.
-- **The editor is desktop-first.** The landing page, docs and about page are
-  responsive; the canvas is not built for phones.
-- **Single-user.** No accounts, no server persistence, no realtime
-  collaboration. Autosave is per browser and is not a backup.
-- **Undo is capped at 50 steps** (⌘/Ctrl+Z, ⌘/Ctrl+Shift+Z) and does not survive a reload.
-- **PNG export only**, and auto-layout is top-to-bottom only.
-
-## Roadmap
-
-- Migrate from `reactflow` v11 to `@xyflow/react` v12 to cut the per-frame
-  reconciliation cost on very large diagrams.
-- Explicit request annotations on every large template (today most are inferred).
-- Retry and circuit-breaker modelling on connections.
-- SVG and PDF export; left-to-right auto-layout.
-- A repository `Dockerfile` and published desktop builds.
-
-Ideas and pull requests are welcome — open an issue to discuss anything large.
-
-## Documentation
-
-| Guide | For |
-| --- | --- |
-| [Documentation site](https://nautilusss.vercel.app/docs) | Task-oriented guides, also served at `/docs` in any deployment |
-| [docs/FEATURES.md](docs/FEATURES.md) | Every feature, how to reach it, and its limits |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the code is organised and why; the simulation maths |
-| [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) | Deployment, Docker, static export, operator security notes |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, conventions, how to add templates and icons |
-| [SECURITY.md](SECURITY.md) | Threat model and how to report a vulnerability |
-
-## Tech stack
-
-Next.js 16 (App Router) · React 19 · TypeScript · React Flow 11 · Tailwind CSS 4 ·
-shadcn/ui and Radix · Web Workers · lz-string · Vitest · Electron (optional
-desktop build)
-
-## Contributing
-
-Templates and icons are approachable first pull requests — each is a single
-file. Start with [CONTRIBUTING.md](CONTRIBUTING.md), and follow the
-[Code of Conduct](CODE_OF_CONDUCT.md).
+| [about.md](about.md) | Interview pitch, technology choices, algorithms, formulas, worked examples, questions, demo, and study plan |
+| [docs/FEATURES.md](docs/FEATURES.md) | Detailed feature reference |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Additional implementation notes |
+| [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) | Deployment examples and operator notes |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution workflow and extension guides |
+| [SECURITY.md](SECURITY.md) | Security reporting and threat model |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Community conduct |
 
 ## License
 
-[MIT](LICENSE) © Somil Gupta and Nautilus contributors.
+[MIT](LICENSE). Copyright Somil Gupta and Nautilus contributors.
